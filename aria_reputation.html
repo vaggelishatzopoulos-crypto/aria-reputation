@@ -1,0 +1,2016 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ikos Aria · F&B Reputation Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script>
+  /* Firebase — Ikos Aria Reputation (shared sync) */
+  window.FIREBASE_CONFIG = {
+    apiKey: "AIzaSyBIWTeSEeRksjg49Mn0BgxqQUqeI8Fw1k8",
+    authDomain: "ikos-aria-reputation.firebaseapp.com",
+    databaseURL: "https://ikos-aria-reputation-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "ikos-aria-reputation",
+    storageBucket: "ikos-aria-reputation.firebasestorage.app",
+    messagingSenderId: "488563942399",
+    appId: "1:488563942399:web:02c6fd7088a8b974a07dca"
+  };
+  try {
+    firebase.initializeApp(window.FIREBASE_CONFIG);
+    window.FB_DB = firebase.database();
+    window.FB_OK = true;
+  } catch(e) { window.FB_OK = false; console.warn("Firebase init failed:", e); }
+</script>
+<style>
+:root{
+  --ink:#0E1B2C; --navy:#14253B; --navy2:#1E3A57;
+  --gold:#B08D57; --gold-soft:#C7A14E; --gold-line:#D8C39A;
+  --cream:#FBF8F1; --parch:#F5EFE2; --parch2:#EFE7D5;
+  --green:#2E6B5E; --green-soft:#E3EDE9;
+  --rust:#9B3B2E; --rust-soft:#F2E2DD;
+  --amber:#B57A1F; --amber-soft:#F6ECD8;
+  --txt:#23303F; --muted:#6E7782; --line:#E5DDCB;
+  --shadow:0 1px 2px rgba(14,27,44,.04),0 8px 24px rgba(14,27,44,.06);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--cream);color:var(--txt);font-family:'Hanken Grotesk',sans-serif;font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+h1,h2,h3,h4{font-family:'Fraunces',serif;font-weight:600;letter-spacing:-.01em;color:var(--ink)}
+.serif{font-family:'Fraunces',serif}
+button{font-family:inherit;cursor:pointer;border:none;background:none}
+.wrap{max-width:1280px;margin:0 auto;padding:0 28px}
+
+/* Header */
+header.top{background:linear-gradient(160deg,var(--ink),var(--navy2));color:#fff;border-bottom:3px solid var(--gold)}
+.top .wrap{display:flex;align-items:center;justify-content:space-between;padding-top:22px;padding-bottom:22px;gap:20px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:16px}
+.crest{width:46px;height:46px;border:1.5px solid var(--gold);border-radius:50%;display:grid;place-items:center;font-family:'Fraunces',serif;font-size:20px;color:var(--gold);flex:none}
+.brand h1{color:#fff;font-size:23px;line-height:1.05}
+.brand .sub{color:var(--gold-line);font-size:12.5px;letter-spacing:.16em;text-transform:uppercase;font-weight:600;margin-top:3px}
+.meta-pill{font-size:12.5px;color:#cdd6e2;text-align:right;line-height:1.6}
+.meta-pill b{color:#fff}
+
+/* Loader / dropzone */
+.intake{padding:40px 0 10px}
+.drop{border:1.5px dashed var(--gold-line);border-radius:16px;background:linear-gradient(180deg,#fff,var(--parch));padding:38px;text-align:center;transition:.2s;cursor:pointer}
+.drop.hot{border-color:var(--gold);background:var(--parch2)}
+.drop h2{font-size:22px;margin-bottom:6px}
+.drop p{color:var(--muted);max-width:620px;margin:0 auto 4px}
+.drop .big{font-size:40px;color:var(--gold);margin-bottom:8px}
+.filechips{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:20px}
+.chip{display:inline-flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);border-radius:30px;padding:7px 14px;font-size:13px;box-shadow:var(--shadow)}
+.chip .dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.chip.ok .dot{background:var(--green)} .chip.ok{border-color:#bcd6cd}
+.chip .x{color:var(--muted);font-size:15px;line-height:1;margin-left:2px}
+.btn{display:inline-flex;align-items:center;gap:8px;background:var(--gold);color:#fff;font-weight:600;padding:11px 22px;border-radius:10px;font-size:14px;transition:.15s}
+.btn:hover{background:var(--gold-soft)}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.btn.ghost:hover{background:var(--parch)}
+.btn[disabled]{opacity:.4;cursor:not-allowed}
+.hint{font-size:12.5px;color:var(--muted);margin-top:14px}
+
+/* Controls bar */
+.controls{background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20;box-shadow:0 2px 12px rgba(14,27,44,.04)}
+.controls .wrap{display:flex;align-items:center;gap:18px;padding:12px 28px;flex-wrap:wrap}
+.tabs{display:flex;gap:4px;flex-wrap:wrap}
+.tab{padding:9px 16px;border-radius:9px;font-weight:600;font-size:13.5px;color:var(--muted);transition:.15s}
+.tab:hover{background:var(--parch);color:var(--ink)}
+.tab.on{background:var(--ink);color:#fff}
+.spacer{flex:1}
+.selwrap{display:flex;align-items:center;gap:8px}
+.selwrap label{font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-weight:700}
+select{font-family:inherit;font-size:13.5px;padding:8px 12px;border:1px solid var(--line);border-radius:9px;background:#fff;color:var(--ink);font-weight:600;cursor:pointer;max-width:230px}
+.dt-in{font-family:inherit;font-size:13px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);font-weight:600}
+.miniact{font-size:12.5px;color:var(--gold);font-weight:700;display:inline-flex;align-items:center;gap:5px}
+
+/* Layout */
+main{padding:30px 0 70px;min-height:50vh}
+.view{display:none} .view.on{display:block;animation:fade .35s ease}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.sec-h{display:flex;align-items:baseline;gap:14px;margin:4px 0 18px}
+.sec-h h2{font-size:26px} .sec-h .scope{font-size:13px;color:var(--gold);font-weight:700;letter-spacing:.04em}
+.lead{color:var(--muted);max-width:760px;margin:-8px 0 24px;font-size:14.5px}
+
+/* KPI cards */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(186px,1fr));gap:16px;margin-bottom:28px}
+.kpi{background:#fff;border:1px solid var(--line);border-radius:14px;padding:20px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.kpi::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--gold)}
+.kpi.k-green::before{background:var(--green)} .kpi.k-rust::before{background:var(--rust)} .kpi.k-navy::before{background:var(--navy2)}
+.kpi .lab{font-size:11.5px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);font-weight:700}
+.kpi .val{font-family:'Fraunces',serif;font-size:38px;font-weight:600;color:var(--ink);line-height:1;margin:8px 0 4px}
+.kpi .val small{font-size:18px;color:var(--muted)}
+.kpi .delta{font-size:13px;font-weight:700}
+.up{color:var(--green)} .down{color:var(--rust)} .flat{color:var(--muted)}
+.kpi .note{font-size:12px;color:var(--muted);margin-top:4px}
+
+/* Panels */
+.grid2{display:grid;grid-template-columns:1.4fr 1fr;gap:20px}
+.grid2.even{grid-template-columns:1fr 1fr}
+@media(max-width:900px){.grid2,.grid2.even{grid-template-columns:1fr}}
+.panel{background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);overflow:hidden;margin-bottom:20px}
+.panel .ph{padding:16px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:10px}
+.panel .ph h3{font-size:17px} .panel .ph .tag{font-size:11.5px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.08em}
+.panel .pb{padding:18px 20px}
+
+/* Tables */
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700;padding:10px 12px;border-bottom:2px solid var(--line);white-space:nowrap}
+td{padding:11px 12px;border-bottom:1px solid var(--parch2);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tbody tr{transition:.12s} tbody tr:hover{background:var(--parch)}
+tbody tr.clk{cursor:pointer}
+.score-pill{display:inline-block;min-width:48px;text-align:center;font-weight:700;padding:3px 8px;border-radius:7px;font-size:13px}
+.s-ex{background:var(--green-soft);color:var(--green)} .s-ok{background:var(--amber-soft);color:var(--amber)} .s-lo{background:var(--rust-soft);color:var(--rust)}
+.delta-s{font-weight:700;font-size:12.5px}
+.outlet-name{font-weight:700;color:var(--ink)}
+.muted{color:var(--muted)} .tiny{font-size:12px}
+.rank{font-weight:700;color:var(--gold);font-family:'Fraunces',serif}
+
+/* bars */
+.bar-row{display:flex;align-items:center;gap:12px;margin-bottom:11px}
+.bar-row .bl{font-size:13px;font-weight:600;width:160px;flex:none;color:var(--ink)}
+.bar-track{flex:1;height:11px;background:var(--parch2);border-radius:6px;overflow:hidden}
+.bar-fill{height:100%;border-radius:6px;background:var(--rust)}
+.bar-fill.t-green{background:var(--green)} .bar-fill.t-amber{background:var(--amber)} .bar-fill.t-gold{background:var(--gold)}
+.bar-row .bv{font-size:12.5px;font-weight:700;width:54px;text-align:right;flex:none}
+
+/* dist mini */
+.dist{display:flex;height:34px;border-radius:8px;overflow:hidden;border:1px solid var(--line)}
+.dist span{display:block} 
+.dseg-10{background:#2E6B5E}.dseg-9{background:#5C9183}.dseg-8{background:#9DBFB4}.dseg-7{background:#E2C275}.dseg-lo{background:#C56A58}
+
+/* comment cards */
+.cmt{border:1px solid var(--line);border-radius:11px;padding:13px 15px;margin-bottom:11px;background:linear-gradient(180deg,#fff,var(--cream))}
+.cmt .ch{display:flex;align-items:center;gap:9px;margin-bottom:6px;flex-wrap:wrap}
+.cmt .cs{font-weight:700;font-size:12px;padding:2px 8px;border-radius:6px}
+.cmt .out{font-size:12.5px;font-weight:700;color:var(--ink)}
+.cmt .dt{font-size:11.5px;color:var(--muted)}
+.cmt .body{font-size:13.5px;color:#3a4654;line-height:1.55}
+.cmt .themes{margin-top:7px;display:flex;gap:6px;flex-wrap:wrap}
+.thm{font-size:11px;font-weight:700;padding:2px 9px;border-radius:20px;background:var(--parch2);color:var(--navy2)}
+
+/* recommendations */
+.rec{border:1px solid var(--line);border-left:5px solid var(--gold);border-radius:12px;padding:17px 19px;margin-bottom:16px;background:#fff;box-shadow:var(--shadow)}
+.rec.pri-high{border-left-color:var(--rust)} .rec.pri-med{border-left-color:var(--amber)} .rec.pri-low{border-left-color:var(--green)}
+.rec .rh{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:6px;flex-wrap:wrap}
+.rec .rh h4{font-size:17px}
+.rec .pri{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;padding:3px 10px;border-radius:20px}
+.pri.pri-high{background:var(--rust-soft);color:var(--rust)} .pri.pri-med{background:var(--amber-soft);color:var(--amber)} .pri.pri-low{background:var(--green-soft);color:var(--green)}
+.rec .why{font-size:13px;color:var(--muted);margin-bottom:10px}
+.rec ul{list-style:none;display:flex;flex-direction:column;gap:7px}
+.rec li{position:relative;padding-left:22px;font-size:13.8px;line-height:1.5}
+.rec li::before{content:"";position:absolute;left:4px;top:8px;width:7px;height:7px;border-radius:50%;background:var(--gold)}
+.rec .ev{margin-top:10px;font-size:12px;color:var(--navy2);background:var(--parch);border-radius:8px;padding:8px 11px}
+
+.empty{text-align:center;padding:60px 20px;color:var(--muted)}
+.empty .big{font-size:34px;margin-bottom:8px}
+footer{border-top:1px solid var(--line);padding:24px 0;color:var(--muted);font-size:12px;text-align:center}
+.snapbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12.5px;color:var(--muted)}
+.snap-pill{background:var(--parch);border:1px solid var(--line);border-radius:20px;padding:4px 11px;font-weight:600;color:var(--navy2)}
+@media print{.controls,.intake,footer .no-print{display:none}.view{display:block!important}}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <div class="brand">
+      <div class="crest">A</div>
+      <div>
+        <h1>Reputation Intelligence</h1>
+        <div class="sub">Ikos Aria · Food &amp; Beverage</div>
+      </div>
+    </div>
+    <div class="meta-pill" id="metaPill">
+      ReviewPro / Shiji Guest Intelligence<br>
+      <b id="metaRange">— load data —</b>
+    </div>
+  </div>
+</header>
+
+<!-- INTAKE -->
+<section class="intake wrap" id="intake">
+  <div class="drop" id="drop">
+    <div class="big">⤓</div>
+    <h2>Load the ReviewPro exports</h2>
+    <p>Drag here (or click) the .xlsx files. The core one is <b>“Results by Question – All Responses”</b>. Optionally add the Reviews / Semantic / Internal Ranking, as well as the <b>Meal Data (covers)</b> to combine scores with volume.</p>
+    <p class="tiny muted">Όeverything runs locally in your browser — no data leaves the device.</p>
+    <input type="file" id="fileInput" accept=".xlsx,.xls" multiple style="display:none">
+    <div class="filechips" id="chips"></div>
+    <div style="margin-top:22px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+      <button class="btn" id="goBtn" disabled>Analysis →</button>
+      <button class="btn ghost" id="pickBtn">Choose files</button>
+    </div>
+    <div class="hint" id="hint"></div>
+  </div>
+</section>
+
+<!-- CONTROLS -->
+<div class="controls" id="controls" style="display:none">
+  <div class="wrap">
+    <div class="tabs" id="tabs">
+      <button class="tab on" data-v="over">Overview</button>
+      <button class="tab" data-v="outlets">Restaurants &amp; Bars</button>
+      <button class="tab" data-v="comments">Comments Analysis</button>
+      <button class="tab" data-v="covers">Covers &amp; Hours</button>
+      <button class="tab" data-v="history">History</button>
+      <button class="tab" data-v="bench">Group Comparison</button>
+      <button class="tab" data-v="recs">Recommended Actions</button>
+    </div>
+    <div class="spacer"></div>
+    <div class="selwrap">
+      <label>Scope</label>
+      <select id="scopeSel"><option value="__ALL__">All F&amp;B</option></select>
+    </div>
+    <button class="miniact" id="importBtn" style="color:var(--gold);font-weight:800">⤒ Import files (reports + covers)</button>
+    <button class="miniact" id="publishBtn" style="color:var(--green-d,#2E6B5E);font-weight:800">☁ Publish to all</button>
+    <span id="syncStatus" class="tiny muted" style="align-self:center"></span>
+    <button class="miniact" id="reloadBtn">↻ Full reload</button>
+    <button class="miniact" id="printBtn">⎙ Print</button>
+    <input type="file" id="topImport" accept=".xlsx,.xls" multiple style="display:none">
+  </div>
+</div>
+
+<main class="wrap" id="main" style="display:none">
+
+  <div id="noDataPrompt" style="display:none;background:linear-gradient(180deg,#fff,var(--parch));border:1.5px dashed var(--gold-line);border-radius:14px;padding:22px 24px;margin-bottom:26px">
+    <div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap">
+      <div style="font-size:30px;color:var(--gold)">⤒</div>
+      <div style="flex:1;min-width:240px">
+        <h3 style="font-size:18px;margin-bottom:3px">History 2023–2026 is already loaded</h3>
+        <p class="muted" style="font-size:13.5px;margin:0">See the <b>History</b> right away. For the current picture (restaurants, comments, covers, actions) use <b>Import export</b> with the fresh 2026 file — it will auto-build the running YtD.</p>
+      </div>
+      <button class="btn" id="promptImport">⤒ Import export now</button>
+    </div>
+  </div>
+
+  <!-- OVERVIEW -->
+  <section class="view on" id="v-over">
+    <div class="sec-h"><h2>Overview</h2><span class="scope" id="over-scope"></span></div>
+    <p class="lead" id="over-lead"></p>
+    <div class="kpis" id="over-kpis"></div>
+    <div class="grid2">
+      <div class="panel">
+        <div class="ph"><h3>Restaurants — Cuisine vs Service</h3><span class="tag">Score / 10</span></div>
+        <div class="pb" id="over-outlets"></div>
+      </div>
+      <div>
+        <div class="panel">
+          <div class="ph"><h3>Score Distribution</h3><span class="tag" id="over-dist-n"></span></div>
+          <div class="pb" id="over-dist"></div>
+        </div>
+        <div class="panel" id="over-gri-panel" style="display:none">
+          <div class="ph"><h3>Online Reputation (GRI™)</h3><span class="tag">Reviews Dashboard</span></div>
+          <div class="pb" id="over-gri"></div>
+        </div>
+      </div>
+    </div>
+    <div class="grid2 even" id="over-barsrs-row">
+      <div class="panel"><div class="ph"><h3>Bars</h3><span class="tag">score · click for comments</span></div><div class="pb" style="padding:0"><div id="over-bars"></div></div></div>
+      <div class="panel"><div class="ph"><h3>Room Service &amp; Pool/Beach</h3><span class="tag">score</span></div><div class="pb" style="padding:0"><div id="over-rspb"></div></div></div>
+    </div>
+    <div class="panel" id="over-dept-panel" style="display:none">
+      <div class="ph"><h3>Internal Ranking — Aria's Position in the Group</h3><span class="tag">per department</span></div>
+      <div class="pb">
+        <div id="dept-cat" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px"></div>
+        <div id="over-dept"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- OUTLETS -->
+  <section class="view" id="v-outlets">
+    <div class="sec-h"><h2>Restaurants &amp; Bars</h2><span class="scope" id="out-scope"></span></div>
+    <p class="lead">All F&amp;B sections: restaurants (Cuisine/Service/Gap), bars, room service, and Pool/Beach Experience. Click a row to drill down into comments.</p>
+    <div class="panel">
+      <div class="ph"><h3>Restaurants</h3><span class="tag">Cuisine · Service · Gap</span></div>
+      <div class="pb" style="padding:0"><div id="out-rest-table"></div></div>
+    </div>
+    <div class="grid2 even">
+      <div class="panel"><div class="ph"><h3>Bars</h3><span class="tag">Experience · click for comments</span></div><div class="pb" style="padding:0"><div id="out-bar-table"></div></div></div>
+      <div class="panel"><div class="ph"><h3>Room Service</h3><span class="tag">Experience</span></div><div class="pb" style="padding:0"><div id="out-rs-table"></div></div></div>
+    </div>
+    <div class="panel">
+      <div class="ph"><h3>Pool &amp; Beach Experience</h3><span class="tag">part of F&amp;B</span></div>
+      <div class="pb" style="padding:0"><div id="out-pb-table"></div></div>
+    </div>
+  </section>
+
+  <!-- COMMENTS -->
+  <section class="view" id="v-comments">
+    <div class="sec-h"><h2>Comments Analysis</h2><span class="scope" id="cmt-scope"></span></div>
+    <p class="lead">Automatic categorization of low/mid-rated comments (≤7) into themes. Switch section to view restaurants, bars or room service — the analyzer adapts the themes per section.</p>
+    <div style="display:flex;gap:6px;margin-bottom:18px;flex-wrap:wrap" id="cmt-domain">
+      <button class="tab on" data-d="rest">Restaurants</button>
+      <button class="tab" data-d="bar">Bars</button>
+      <button class="tab" data-d="rs">Room Service</button>
+    </div>
+    <div class="grid2">
+      <div class="panel">
+        <div class="ph"><h3>Themes pulling the score down</h3><span class="tag" id="cmt-theme-n"></span></div>
+        <div class="pb" id="cmt-themes"></div>
+      </div>
+      <div class="panel">
+        <div class="ph"><h3>Comment composition</h3><span class="tag">≤7 vs positive</span></div>
+        <div class="pb" id="cmt-split"></div>
+      </div>
+    </div>
+    <div class="panel" id="cmt-byoutlet-panel">
+      <div class="ph"><h3>By outlet</h3><span class="tag">score · comments ≤7</span></div>
+      <div class="pb" style="padding:0"><div id="cmt-byoutlet"></div></div>
+    </div>
+    <div class="panel">
+      <div class="ph"><h3>Comments to watch</h3><span class="tag" id="cmt-list-n"></span></div>
+      <div class="pb" id="cmt-list"></div>
+    </div>
+  </section>
+
+  <!-- COVERS -->
+  <section class="view" id="v-covers">
+    <div class="sec-h"><h2>Covers &amp; Hours</h2><span class="scope" id="cov-scope"></span></div>
+    <p class="lead" id="cov-lead">Cover volume per service period (morning / noon / evening) next to the score, with official operating hours. Shows where the most volume is “produced” and how it correlates with the score.</p>
+    <div id="cov-empty" class="empty" style="display:none"><div class="big">⤒</div>No Meal Data file loaded. Click “Import” top-right and add an Ikos Aria Meal Data .xlsx.</div>
+    <div id="cov-body">
+      <div class="kpis" id="cov-kpis"></div>
+      <div class="panel" style="border-left:4px solid var(--gold)">
+        <div class="pb" id="cov-corr" style="font-size:13.5px"></div>
+      </div>
+      <div class="grid2">
+        <div class="panel">
+          <div class="ph"><h3>Covers per service period</h3><span class="tag" id="cov-split-n"></span></div>
+          <div class="pb" id="cov-split"></div>
+        </div>
+        <div class="panel">
+          <div class="ph"><h3>Score vs Total Volume</h3><span class="tag">cuisine vs covers</span></div>
+          <div class="pb" id="cov-scatter"></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="ph"><h3>Table by restaurant</h3><span class="tag">covers & all-day hours</span></div>
+        <div class="pb" style="padding:0"><div id="cov-table"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HISTORY -->
+  <section class="view" id="v-history">
+    <div class="sec-h"><h2>History</h2><span class="scope">Ikos Aria F&amp;B</span></div>
+    <div style="background:linear-gradient(180deg,#fff,var(--parch));border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:18px;font-size:13.5px;line-height:1.6">
+      <b>What is this:</b> a live reputation dashboard for Ikos Aria F&amp;B, with data from ReviewPro. All scores are on the scale <b>0–10</b> (weighted by responses, like the official ranking); NPS on the −100 to +100 scale; GRI as a percentage.
+      <br><b>Tabs:</b> <i>Overview</i> (where we are now) · <i>Restaurants &amp; Bars</i> (by outlet) · <i>Comments Analysis</i> (what guests say) · <i>Covers &amp; Hours</i> (volume vs score) · <i>History</i> (evolution over time) · <i>Group Comparison</i> (vs other hotels) · <i>Actions</i> (what to do).
+    </div>
+    <p class="lead">Score evolution over time. Each ReviewPro import is kept as a snapshot with its period. The “Surveys Dashboard” adds an F&amp;B time series per period. Covers can be compared freely by date below.</p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px">
+      <button class="btn ghost" id="histExport">⤓ Export history (JSON)</button>
+      <button class="btn ghost" id="histImportBtn">⤒ Import history</button>
+      <input type="file" id="histImport" accept=".json" style="display:none">
+      <button class="btn ghost" id="histClear" style="color:var(--rust)">✕ Clear snapshots</button>
+    </div>
+
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px" id="hist-mode">
+      <button class="tab on" data-hm="fb">Total F&amp;B</button>
+      <button class="tab" data-hm="dept">By F&amp;B department</button>
+    </div>
+
+    <div class="panel">
+      <div class="ph"><h3 id="hist-chart-title">F&amp;B Score Evolution</h3><span class="tag" id="hist-n"></span></div>
+      <div class="pb" id="hist-chart"></div>
+    </div>
+
+    <div class="panel">
+      <div class="ph"><h3>Snapshot comparison</h3><span class="tag">table</span></div>
+      <div class="pb" style="padding:0"><div id="hist-table"></div></div>
+    </div>
+
+    <div class="panel" id="hist-evo-panel" style="display:none">
+      <div class="ph"><h3>F&amp;B Score Evolution</h3><span class="tag">Surveys Dashboard</span></div>
+      <div class="pb" id="hist-evo"></div>
+    </div>
+
+    <!-- Free date comparison on covers -->
+    <div class="panel" id="hist-cov-panel">
+      <div class="ph"><h3>Free date comparison — Covers</h3><span class="tag" id="hist-cov-tag">daily detail</span></div>
+      <div class="pb">
+        <div id="hist-cov-empty" class="muted tiny" style="display:none">Load a Meal Data file to enable date comparison.</div>
+        <div id="hist-cov-controls" style="display:none">
+          <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px">
+            <div><div class="tiny muted" style="margin-bottom:4px;font-weight:700;text-transform:uppercase;letter-spacing:.08em">Period A</div>
+              <input type="text" id="pA1" class="dt-in" placeholder="DD/MM/YYYY" maxlength="10" style="width:110px"> <span class="muted">→</span> <input type="text" id="pA2" class="dt-in" placeholder="DD/MM/YYYY" maxlength="10" style="width:110px"></div>
+            <div><div class="tiny muted" style="margin-bottom:4px;font-weight:700;text-transform:uppercase;letter-spacing:.08em">Period B</div>
+              <input type="text" id="pB1" class="dt-in" placeholder="DD/MM/YYYY" maxlength="10" style="width:110px"> <span class="muted">→</span> <input type="text" id="pB2" class="dt-in" placeholder="DD/MM/YYYY" maxlength="10" style="width:110px"></div>
+            <button class="btn" id="cmpBtn">Compare →</button>
+          </div>
+          <p class="tiny muted" style="margin-top:-8px">Date format: DD/MM/YYYY (e.g. 15/05/2026)</p>
+          <div id="hist-cov-result"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- BENCHMARK -->
+  <section class="view" id="v-bench">
+    <div class="sec-h"><h2>Group Comparison</h2><span class="scope">Ikos Aria vs other properties</span></div>
+    <p class="lead">Where Aria stands in the group, per metric. Ranking is computed live from the loaded export. The <b>Ikos peers</b> are the fairest comparison (same concept).</p>
+    <div id="bench-empty" class="empty" style="display:none"><div class="big">⤒</div>Import an export (Results by Question) to compute the group comparison.</div>
+    <div id="bench-body">
+      <div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap" id="bench-view">
+        <button class="tab on" data-bv="property">By Property</button>
+        <button class="tab" data-bv="concept">By Concept (all Anayas...)</button>
+        <button class="tab" data-bv="category">By Category (all restaurants...)</button>
+      </div>
+
+      <!-- PROPERTY view -->
+      <div id="bench-property">
+        <div style="display:flex;gap:6px;margin-bottom:18px;flex-wrap:wrap" id="bench-grp">
+          <button class="tab on" data-g="ikos">Ikos peers</button>
+          <button class="tab" data-g="all">Whole group</button>
+        </div>
+        <div class="kpis" id="bench-rank"></div>
+        <div class="panel">
+          <div class="ph"><h3>Ranking per metric</h3><span class="tag" id="bench-tag"></span></div>
+          <div class="pb"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+            <div id="bench-metric-tabs" style="display:flex;gap:6px;flex-wrap:wrap">
+            <button class="tab on" data-m="cuisine">Cuisine</button>
+            <button class="tab" data-m="service">Service</button>
+            <button class="tab" data-m="overall">Overall</button>
+            <button class="tab" data-m="nps">NPS</button>
+            <button class="tab" data-m="bars">Bars</button>
+            <button class="tab" data-m="rs">Room Service</button>
+          </div>
+          <div class="selwrap"><label>Sort</label><select id="bench-sort"><option value="desc">Highest → lowest</option><option value="asc">Lowest → highest</option></select></div>
+          </div><div id="bench-chart"></div></div>
+        </div>
+        <div class="panel">
+          <div class="ph"><h3>Full table</h3><span class="tag">all metrics</span></div>
+          <div class="pb" style="padding:0"><div id="bench-table"></div></div>
+        </div>
+        <div class="panel" id="bench-learn-panel">
+          <div class="ph"><h3>What the top performers do better — where we can improve</h3><span class="tag">insight</span></div>
+          <div class="pb" id="bench-learn"></div>
+        </div>
+      </div>
+
+      <!-- CONCEPT view -->
+      <div id="bench-concept" style="display:none">
+        <p class="lead">The same concept across all group properties — which is #1, where ours stands. Pick a concept and metric.</p>
+        <div class="panel">
+          <div class="ph"><h3>Concept Comparison</h3><span class="tag" id="bc-tag"></span></div>
+          <div class="pb">
+            <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px">
+              <div class="selwrap"><label>Concept</label><select id="bc-concept"></select></div>
+              <div class="selwrap"><label>Metric</label><select id="bc-metric"><option value="cuisine">Cuisine</option><option value="service">Service</option></select></div>
+            </div>
+            <div id="bc-chart"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CATEGORY view -->
+      <div id="bench-category" style="display:none">
+        <p class="lead">All our outlets of a category vs the whole group — Aria average against group average, plus full outlet ranking.</p>
+        <div class="panel">
+          <div class="ph"><h3>Category Comparison</h3><span class="tag" id="bcat-tag"></span></div>
+          <div class="pb">
+            <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px">
+              <div class="selwrap"><label>Category</label><select id="bcat-cat"><option value="rest-cuisine">Restaurants — Cuisine</option><option value="rest-service">Restaurants — Service</option><option value="bar">Bars</option><option value="rs">Room Service</option></select></div>
+            </div>
+            <div class="kpis" id="bcat-kpis"></div>
+            <div id="bcat-chart"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- RECS -->
+  <section class="view" id="v-recs">
+    <div class="sec-h"><h2>Recommended Actions</h2><span class="scope" id="rec-scope"></span></div>
+    <p class="lead">Data-driven actions: Cuisine–Service gap, trend vs last year, dominant comment themes and group ranking. Prioritized by importance.</p>
+    <div id="rec-list"></div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <span class="no-print">Reputation Intelligence · Ikos Aria F&amp;B · built for manual updates from ReviewPro exports.</span>
+    <div class="snapbar no-print" id="snapbar" style="justify-content:center;margin-top:10px"></div>
+  </div>
+</footer>
+
+<script>
+"use strict";
+const HOTEL = "Ikos Aria";
+const $ = s=>document.querySelector(s);
+const $$ = s=>[...document.querySelectorAll(s)];
+const num = v=>{ if(v==null||v==="")return null; const n=parseFloat(String(v).replace(/[^0-9.\-]/g,"")); return isNaN(n)?null:n; };
+const fmt = (v,d=2)=> v==null?"—":v.toFixed(d);
+const esc = s=> String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+// ISO yyyy-mm-dd -> dd/mm/yyyy (Greek format)
+const fmtDate = iso=>{ if(!iso)return "—"; const m=String(iso).match(/(\d{4})-(\d{2})-(\d{2})/); return m?`${m[3]}/${m[2]}/${m[1]}`:iso; };
+const fmtDateShort = iso=>{ const m=String(iso).match(/(\d{4})-(\d{2})-(\d{2})/); return m?`${m[3]}/${m[2]}`:iso; };
+
+/* ---------- State ---------- */
+let DB = null;          // parsed dataset
+let pending = {};       // filename -> {type, wb}
+let COVERS = null;      // {byOutlet:{name:{bf,lu,di}}, days:[], range:{from,to}, years:[]}
+let COVER_WBS = [];     // accumulated covers workbooks across imports
+let cmtDomain = "rest"; // current comments domain: rest | bar | rs
+let cmtOutlet = "__ALL__"; // sub-filter within comments domain
+let benchGroup = "ikos"; // ikos | all
+let benchMetric = "cuisine";
+let benchSort = "desc";
+let deptCat = "F&B"; // default group filter on Internal Ranking
+let histMode = "fb"; // fb | dept
+let benchView = "property"; // property | concept | category
+let bcConcept = null, bcMetric = "cuisine", bcatCat = "rest-cuisine";
+
+/* Official operating hours (ikosresorts.com, Ikos Aria) — all-day periods */
+const HOURS = {
+  "Flavors":  {cuisine:"Mediterranean buffet", bf:"07:30–11:00", lu:"12:30–14:30", di:"18:30–21:30"},
+  "Fresco":   {cuisine:"Italian", bf:"08:00–11:00", lu:"13:00–17:00", di:"18:30–22:30"},
+  "Kos":      {cuisine:"Greek / Kos", bf:"08:00–11:00", lu:"13:00–17:00", di:"18:30–22:30"},
+  "Ouzo":     {cuisine:"Greek", bf:"08:00–11:00", lu:"13:00–16:00", di:"18:30–22:30"},
+  "Seasons":  {cuisine:"Asian-Mediterranean", bf:"—", lu:"à la carte", di:"18:30–22:30"},
+  "Anaya":    {cuisine:"Asian / Oriental", bf:"—", lu:"—", di:"18:30–22:30"},
+  "Provence": {cuisine:"French", bf:"—", lu:"—", di:"18:30–22:30"},
+  "Oliva":    {cuisine:"Spanish", bf:"—", lu:"—", di:"18:30–22:30"},
+  "Kochylari (Dine Out)": {cuisine:"Dine Out · Kos/Greek-Med (2km)", bf:"—", lu:"—", di:"Dine Out"},
+  "Mylotopi (Dine Out)":  {cuisine:"Dine Out · Mediterranean (4km)", bf:"—", lu:"—", di:"Dine Out"}
+};
+/* Map covers-file outlet labels -> ReviewPro outlet names */
+const COVER_ALIAS = {
+  "Provence":"Provence","Flavors":"Flavors","Oliva":"Oliva","Fresco":"Fresco","Kos":"Kos",
+  "Anaya":"Anaya","Seasons":"Seasons","Ouzo":"Ouzo",
+  "Mylotopi":"Mylotopi (Dine Out)","Kohylari":"Kochylari (Dine Out)","Kochylari":"Kochylari (Dine Out)"
+};
+const REST_ORDER = ["Provence","Flavors","Oliva","Fresco","Kos","Anaya","Seasons","Ouzo","Kochylari (Dine Out)","Mylotopi (Dine Out)"];
+
+/* Department categories for Internal Ranking group filter */
+const DEPT_CATEGORIES = {
+  "F&B": ["Food & Beverage","Restaurants","Quality of Restaurant Cuisine","Quality of Restaurant Service","Bar","Room Service","Mini Bar","Dine out","Dine out Cuisine","Dine out Service","Pool Experience","Beach Experience"],
+  "Rooms / Housekeeping": ["Guest Room","Housekeeping","Rooms","Maintenance","Public Areas"],
+  "Front Office": ["Front Office","Reception","Digital Concierge","Guest Relations","Deluxe Collection","Reservations"],
+  "Entertainment & Sports": ["Entertainment","M&E","Theatre","Sport & Recreation","Watersports","GYM","Tennis","Sports & Fitness Activities","Mountain Bike","Football Facilities","Diving"],
+  "Kids": ["Little Guest","Kids Club","Creche","Babysitting","Teens Club"],
+  "Wellness": ["Spa"],
+  "Resort / ΆAll": ["Location","Gardens and landscape","Security","Sustainability","Value"]
+};
+function deptCategory(name){ for(const[cat,list]of Object.entries(DEPT_CATEGORIES)){ if(list.some(d=>d.toLowerCase()===String(name).toLowerCase())) return cat; } return "Resort / ΆAll"; }
+
+/* Kitchen → satellite-point covers allocation (% of the kitchen's OWN lunch covers).
+   These satellite points (pool/beach bars) don't appear separately in ReviewPro; the
+   kitchen is the cost center that produces their snacks (served 12:00–17:00). */
+const COVER_ALLOC = {
+  "Seasons": [{to:"Deluxe Lobby", pct:0.12}],
+  "Ouzo":    [{to:"Deluxe Pool",  pct:0.11}],
+  "Oliva":   [{to:"Main Pool", pct:0.07},{to:"Beach Pool", pct:0.07}],
+  "Kos":     [{to:"Beach Bar", pct:0.05}]
+};
+
+/* ---------- File identification ---------- */
+function identify(wb){
+  const s = wb.SheetNames.map(x=>x.toLowerCase());
+  // Covers/meal data: many date-named sheets, first cell "Covers Ikos Aria"
+  if(wb.SheetNames.length>5 && wb.SheetNames.filter(n=>/^\s*\d{1,2}[.,]\d{1,2}/.test(n)).length>=3) return "covers";
+  if(s.some(x=>x.includes("score evolution"))||(s.some(x=>x.includes("my hotels"))&&s.some(x=>x.includes("trends")))) return "dashboard";
+  if(s.some(x=>x.includes("restaurants - comments"))||s.some(x=>x.includes("results by question"))||s.some(x=>x.includes("recommendation (nps)"))) return "results";
+  if(s.some(x=>x.includes("categories negatively"))) return "semantic";
+  if(s.some(x=>x.includes("my establishments"))||s.some(x=>x.includes("indexes evolution"))) return "reviews";
+  if(s.some(x=>x.includes("departments"))&&s.some(x=>x.includes("topbox"))) return "ranking";
+  if(s.some(x=>x.includes("restaurants - ratings"))) return "results";
+  return "unknown";
+}
+const TYPE_LABEL={results:"Results by Question",semantic:"Semantic Dashboard",reviews:"Reviews Dashboard (GRI)",ranking:"Internal Ranking",covers:"Meal Data (Covers)",dashboard:"Surveys Dashboard",unknown:"ΆUnknown"};
+
+/* ---------- Helpers to read sheets as array-of-arrays ---------- */
+function aoa(wb,name){ const ws=wb.Sheets[name]; if(!ws)return []; return XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:null}); }
+function findSheet(wb,frag){ return wb.SheetNames.find(n=>n.toLowerCase().includes(frag.toLowerCase())); }
+function findHeaderRow(rows,musts){
+  for(let i=0;i<rows.length;i++){
+    const cells=(rows[i]||[]).map(c=>c==null?"":String(c).trim());
+    if(musts.every(m=>cells.some(c=>c===m))) return i;
+  }
+  return -1;
+}
+
+/* ---------- Parse: ratings sheet with stacked question blocks ---------- */
+function parseRatings(rows){
+  // returns array of {outlet,hotel,pms,question,score,change,responses,dist:{}}
+  const out=[]; let question=null; let detailIdx=-1; let cur=null;
+  const isQuestion = a=>{ if(!a)return false; const t=String(a).trim(); return (t.includes("{{")||/\bCuisine\b/.test(t)||/\bService\b/.test(t)||/\bExperience\b/.test(t)||/Room Service/.test(t)); };
+  for(let i=0;i<rows.length;i++){
+    const r=rows[i]||[]; const nonEmpty=r.filter(c=>c!=null&&String(c).trim()!=="");
+    const a=r[0]!=null?String(r[0]).trim():"";
+    // question title row = single populated cell
+    if(nonEmpty.length===1 && isQuestion(a)){
+      let q=a.replace("{{Outlet Name}}","").replace(/-\s*Ratings/i,"").trim();
+      if(/Cuisine/i.test(a)) q="Cuisine"; else if(/Service/i.test(a)) q="Service"; else q=q||"Experience";
+      question=q; detailIdx=-1; continue;
+    }
+    // detail header
+    const cells=r.map(c=>c==null?"":String(c).trim());
+    if(cells.includes("Outlet name")&&cells.includes("Description")&&cells.includes("Score")){
+      detailIdx=i;
+      cur={oi:cells.indexOf("Outlet name"),pi:cells.indexOf("PMS ID"),hi:cells.indexOf("Hotel"),di:cells.indexOf("Description"),si:cells.indexOf("Score"),ci:cells.indexOf("Change"),ri:cells.indexOf("Responses")};
+      continue;
+    }
+    if(detailIdx>=0 && cur && question){
+      const desc=r[cur.di]!=null?String(r[cur.di]).trim():"";
+      const outlet=r[cur.oi]!=null?String(r[cur.oi]).trim():"";
+      const hotel=r[cur.hi]!=null?String(r[cur.hi]).trim():"";
+      if(!outlet) continue;
+      if(desc==="Total"){
+        out.push({outlet,hotel,pms:r[cur.pi],question,score:num(r[cur.si]),change:num(r[cur.ci]),responses:num(r[cur.ri]),dist:{}});
+      } else if(/^\d{1,2}$/.test(desc)){
+        const last=out[out.length-1];
+        if(last&&last.outlet===outlet&&last.question===question) last.dist[desc]=num(r[cur.ri]);
+      }
+    }
+  }
+  return out;
+}
+
+/* ---------- Parse: comments sheet ---------- */
+function parseComments(rows){
+  const h=findHeaderRow(rows,["Outlet name","Comment"]);
+  if(h<0) return [];
+  const cells=rows[h].map(c=>c==null?"":String(c).trim());
+  const ix={o:cells.indexOf("Outlet name"),p:cells.indexOf("PMS ID"),ho:cells.indexOf("Hotel"),na:cells.indexOf("Name"),rm:cells.indexOf("Room"),dt:cells.indexOf("Date"),lg:cells.indexOf("Language"),sc:cells.indexOf("Score"),ov:cells.indexOf("Overall"),np:cells.indexOf("NPS"),cm:cells.indexOf("Comment")};
+  const out=[];
+  for(let i=h+1;i<rows.length;i++){
+    const r=rows[i]||[]; const outlet=r[ix.o]!=null?String(r[ix.o]).trim():"";
+    const hotel=r[ix.ho]!=null?String(r[ix.ho]).trim():"";
+    const comment=ix.cm>=0?(r[ix.cm]!=null?String(r[ix.cm]).trim():""):"";
+    if(!outlet&&!hotel) continue;
+    if(!comment||comment==="-"||/^n\/?a$/i.test(comment)) continue;
+    out.push({outlet,hotel,pms:r[ix.p],name:r[ix.na],room:r[ix.rm],date:r[ix.dt]!=null?String(r[ix.dt]).trim():"",lang:r[ix.lg],score:num(r[ix.sc]),overall:num(r[ix.ov]),nps:num(r[ix.np]),comment});
+  }
+  return out;
+}
+
+/* ---------- Theme classifiers (per domain) ---------- */
+const THEMES_REST=[
+  {key:"Dish temperature",re:/\b(cold|lukewarm|not (hot|warm)|warm food|tepid|chilly|κρ[υύ]ο)\b/i,kind:"kitchen"},
+  {key:"Execution / Technique",re:/\b(overcook|undercook|raw|chewy|tough|dry|bland|tasteless|burnt|soggy|greasy|rubbery|not cooked|hard)\b/i,kind:"kitchen"},
+  {key:"Quantity / Portion",re:/\b(portion|small|tiny|not enough|more food|quantity|left hungry|stingy|skimpy)\b/i,kind:"kitchen"},
+  {key:"Variety / Options",re:/\b(variety|same|repetitive|repeat|choice|selection|limited|menu (change|chang|rotat)|boring|monoton)\b/i,kind:"kitchen"},
+  {key:"Authenticity",re:/\b(authentic|not authentic|traditional|genuine|real (thai|greek|italian|asian))\b/i,kind:"kitchen"},
+  {key:"Pace / Waiting",re:/\b(rush|rushed|slow|wait|waited|waiting|forgot|forgotten|too (fast|quick)|production line|long time|ages|attention|ignored|20 min|left waiting)\b/i,kind:"service"},
+  {key:"Booking / Availability",re:/\b(book|booking|reservation|reserve|fully booked|availab|hard to get|couldn'?t get|no table|app)\b/i,kind:"service"},
+  {key:"Staff behavior",re:/\b(rude|unfriendly|unhelpful|attitude|miserable|ignored us|not friendly|unprofessional)\b/i,kind:"service"},
+  {key:"Drinks / Wine / Bar",re:/\b(wine|cocktail|drink|drinks|bar|beer|coffee|barman|bartender)\b/i,kind:"bar"},
+  {key:"Atmosphere / Space",re:/\b(view|atmosphere|ambien|noise|noisy|loud|music|seating|table (too|next)|cramped|hot inside|cold inside|smell|setting)\b/i,kind:"ambience"},
+  {key:"Allergies / Dietary",re:/\b(allerg|gluten|vegan|vegetarian|dietary|intoleran|coeliac|celiac)\b/i,kind:"service"}
+];
+const THEMES_BAR=[
+  {key:"Serving speed",re:/\b(slow|wait|waited|waiting|queue|long time|ages|forgot|forgotten|20 min|never came|took (ages|forever)|service was slow)\b/i,kind:"service"},
+  {key:"Cocktail quality",re:/\b(cocktail|watered|weak|too strong|no alcohol|watery|badly made|inconsistent|not nice|tasteless drink)\b/i,kind:"bar"},
+  {key:"Drinks variety",re:/\b(variety|selection|limited|same|choice|no (gin|whisky|brand)|brands|premium|range of)\b/i,kind:"bar"},
+  {key:"Wine",re:/\b(wine|house wine|wine list|red wine|white wine|prosecco|champagne)\b/i,kind:"bar"},
+  {key:"Coffee",re:/\b(coffee|espresso|cappuccino|latte|barista)\b/i,kind:"bar"},
+  {key:"Staff behavior",re:/\b(rude|unfriendly|unhelpful|attitude|miserable|ignored|not friendly|unprofessional|bartender was)\b/i,kind:"service"},
+  {key:"Atmosphere / Music",re:/\b(music|loud|noise|noisy|atmosphere|ambien|crowded|seating|too busy|vibe|dj)\b/i,kind:"ambience"},
+  {key:"Snacks / Bar food",re:/\b(snack|food at the bar|nibbles|nuts|crisps|bar food)\b/i,kind:"kitchen"},
+  {key:"Hours / Availability",re:/\b(closed|open|hours|opening|shut|not available|too early|too late)\b/i,kind:"service"}
+];
+const THEMES_RS=[
+  {key:"Delivery time",re:/\b(slow|wait|waited|waiting|late|long time|ages|took (ages|forever|hours)|delay|never (came|arrived)|forgot|forgotten|hour|45 min|over an hour)\b/i,kind:"service"},
+  {key:"Food temperature",re:/\b(cold|lukewarm|not hot|warm food|tepid)\b/i,kind:"kitchen"},
+  {key:"Order accuracy",re:/\b(wrong|missing|forgot|incorrect|not what|mistake|order was|item missing|no cutlery|forgotten)\b/i,kind:"service"},
+  {key:"Menu variety",re:/\b(menu|variety|selection|limited|choice|options|same)\b/i,kind:"kitchen"},
+  {key:"Food quality",re:/\b(bland|tasteless|dry|quality|poor|not nice|soggy|overcook|undercook)\b/i,kind:"kitchen"},
+  {key:"Behavior / Process",re:/\b(rude|unfriendly|unhelpful|attitude|hard to (order|reach)|phone|call|charged|extra charge|app)\b/i,kind:"service"},
+  {key:"Presentation / Packaging",re:/\b(presentation|packaging|tray|spilled|spillt|messy|plastic)\b/i,kind:"ambience"}
+];
+const THEME_SETS={rest:THEMES_REST,bar:THEMES_BAR,rs:THEMES_RS};
+// backwards-compat alias used elsewhere
+const THEMES=THEMES_REST;
+function classify(text,domain){
+  const set=THEME_SETS[domain||"rest"]||THEMES_REST;
+  const found=[];
+  for(const t of set){ if(t.re.test(text)) found.push(t.key); }
+  return found;
+}
+function themeKind(key,domain){ const set=THEME_SETS[domain||"rest"]||THEMES_REST; const t=set.find(x=>x.key===key); return t?t.kind:"service"; }
+
+/* ---------- Parse: Internal Ranking departments ---------- */
+function parseRanking(wb){
+  const sn=findSheet(wb,"Departments"); if(!sn)return null;
+  const rows=aoa(wb,sn);
+  const h=findHeaderRow(rows,["Departments","Overall Score"]);
+  if(h<0)return null;
+  const res=[]; let dept=null;
+  for(let i=h+1;i<rows.length;i++){
+    const r=rows[i]||[]; const a=r[0]!=null?String(r[0]).trim():"";
+    if(!a)continue;
+    const sc=r[1]!=null?String(r[1]).trim():"";
+    if(/^\d+\/\d+$/.test(sc)){ dept={name:a,rank:sc,rankChange:(r[2]!=null?String(r[2]).trim():"")}; res.push(dept); }
+    else if(a===HOTEL && dept){ dept.score=num(r[1]); dept.scoreChange=num(r[2]); dept.responses=num(r[3]); }
+  }
+  return res.filter(d=>d.score!=null);
+}
+
+/* ---------- Parse: Reviews GRI ---------- */
+function parseReviews(wb){
+  const out={group:null,aria:null};
+  let sn=findSheet(wb,"Summary");
+  if(sn){ const rows=aoa(wb,sn); const h=findHeaderRow(rows,["Group","GRI™"]);
+    if(h>=0&&rows[h+1]){ out.group={gri:num(rows[h+1][1]),change:num(rows[h+1][2]),reviews:num(rows[h+1][4]),semantic:num(rows[h+1][6])}; } }
+  sn=findSheet(wb,"My Establishments");
+  if(sn){ const rows=aoa(wb,sn); const h=findHeaderRow(rows,["Hotel","GRI™"]);
+    if(h>=0){ for(let i=h+1;i<rows.length;i++){ const r=rows[i]||[]; if(r[1]&&String(r[1]).trim()===HOTEL){ out.aria={gri:num(r[2]),change:num(r[3]),up:r[4],down:r[5]}; break; } } } }
+  return out;
+}
+
+/* ---------- Parse: Semantic ---------- */
+function parseSemantic(wb){
+  const out={neg:[],pos:[]};
+  function block(sheetFrag,target){
+    const sn=findSheet(wb,sheetFrag); if(!sn)return;
+    const rows=aoa(wb,sn); const h=findHeaderRow(rows,["Categories","Establishment"]);
+    if(h<0)return; let cat=null;
+    for(let i=h+1;i<rows.length;i++){ const r=rows[i]||[];
+      const c=r[0]!=null?String(r[0]).trim():""; const est=r[1]!=null?String(r[1]).trim():"";
+      if(c) cat=c;
+      if(est===HOTEL){ out[target].push({cat,mentions:num(r[2]),change:num(r[3]),griImpact:num(r[4]),concept:r[6]!=null?String(r[6]).trim():""}); }
+    }
+  }
+  block("Categories Negatively","neg"); block("Categories Positively","pos");
+  return out;
+}
+
+/* ---------- Parse: Covers (meal data) ---------- */
+function parseCovers(files){
+  const byOutlet={}; const days=[]; const years=new Set();
+  for(const f of files){
+    const wb=f.wb;
+    // year from filename (e.g. ..._2026.xlsx)
+    const ym=(f.name.match(/(20\d{2})/)||[])[1];
+    const fileYear=ym?parseInt(ym):null;
+    for(const sn of wb.SheetNames){
+      const m=sn.match(/^\s*(\d{1,2})[.,](\d{1,2})/);
+      if(!m) continue;
+      const d=parseInt(m[1]), mo=parseInt(m[2]);
+      const rows=aoa(wb,sn);
+      if(rows.length<4) continue;
+      // confirm it's a covers sheet
+      const first=rows[0]&&rows[0][0]?String(rows[0][0]):"";
+      if(!/Covers/i.test(first)) continue;
+      const year=fileYear||2026;
+      years.add(year);
+      const dateStr=`${year}-${String(mo).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+      const dayRec={date:dateStr,outlets:{}};
+      for(let i=3;i<rows.length;i++){
+        const r=rows[i]; if(!r||r[0]==null) continue;
+        let name=String(r[0]).trim();
+        if(!name||/^staff/i.test(name)||/^total/i.test(name)||/^allowance/i.test(name)) continue;
+        const alias=COVER_ALIAS[name]; if(!alias) continue; // keep only guest restaurants we track
+        const gi=idx=>{ const v=r[idx]; if(v==null||v==="")return 0; const n=parseInt(String(v).replace(/[^0-9]/g,"")); return isNaN(n)?0:n; };
+        const bf=gi(1), lu=gi(3), di=gi(5);
+        dayRec.outlets[alias]={bf,lu,di};
+        const o=byOutlet[alias]||(byOutlet[alias]={bf:0,lu:0,di:0,days:0});
+        o.bf+=bf; o.lu+=lu; o.di+=di; o.days++;
+      }
+      if(Object.keys(dayRec.outlets).length) days.push(dayRec);
+    }
+  }
+  days.sort((a,b)=>a.date.localeCompare(b.date));
+  return {byOutlet,days,years:[...years].sort(),
+    range:days.length?{from:days[0].date,to:days[days.length-1].date}:null};
+}
+
+/* ---------- Master parse ---------- */
+function buildDB(files){
+  const db={range:"",prevRange:"",generated:"",outlets:{},bars:[],roomservice:[],restRatings:[],
+            comments:{rest:[],bar:[],rs:[],final:[]},ranking:null,reviews:null,semantic:null,
+            overall:null,nps:null};
+  for(const f of Object.values(files)){
+    const wb=f.wb, type=f.type;
+    if(type==="results"){
+      // metadata
+      const sumName=findSheet(wb,"Summary");
+      if(sumName){ const rows=aoa(wb,sumName);
+        rows.forEach(r=>{ const a=r&&r[0]?String(r[0]):""; 
+          if(a.startsWith("Date Range:"))db.range=a.replace("Date Range:","").trim();
+          if(a.startsWith("Previous Date Range:"))db.prevRange=a.replace("Previous Date Range:","").trim();
+          if(a.startsWith("Generated by"))db.generated=a.replace("Generated by","").trim();
+        });
+      }
+      // restaurant ratings (cuisine+service)
+      let sn=findSheet(wb,"Restaurants - Ratings");
+      if(sn) db.restRatings=parseRatings(aoa(wb,sn));
+      // bars
+      sn=findSheet(wb,"Bars - Ratings"); if(sn) db.bars=parseRatings(aoa(wb,sn));
+      // room service
+      sn=findSheet(wb,"Room Service - Ratings"); if(sn) db.roomservice=parseRatings(aoa(wb,sn));
+      // comments
+      sn=findSheet(wb,"Restaurants - Comments"); if(sn) db.comments.rest=parseComments(aoa(wb,sn));
+      sn=findSheet(wb,"Bars - Comments"); if(sn) db.comments.bar=parseComments(aoa(wb,sn));
+      sn=findSheet(wb,"Room Service - Comments"); if(sn) db.comments.rs=parseComments(aoa(wb,sn));
+      // overall + NPS (Aria specific from Recommendation/Overall single-choice tables)
+      sn=findSheet(wb,"Recommendation (NPS)"); if(sn) db.npsTable=parseSingleChoice(aoa(wb,sn));
+      sn=findSheet(wb,"Overall Experience"); if(sn) db.overallTable=parseSingleChoice(aoa(wb,sn));
+      sn=findSheet(wb,"Pool Experience"); if(sn) db.poolTable=parseSingleChoice(aoa(wb,sn));
+      sn=findSheet(wb,"Beach Experience"); if(sn) db.beachTable=parseSingleChoice(aoa(wb,sn));
+    }
+    else if(type==="ranking") db.ranking=parseRanking(wb);
+    else if(type==="reviews") db.reviews=parseReviews(wb);
+    else if(type==="semantic") db.semantic=parseSemantic(wb);
+    else if(type==="dashboard") db.dashboard=parseDashboard(wb);
+  }
+  return db;
+}
+
+/* ---------- Parse: Surveys Dashboard (Score Evolution time series) ---------- */
+function parseDashboard(wb){
+  const out={evolution:[],fb:null};
+  const sn=findSheet(wb,"Score Evolution"); if(!sn) return out;
+  const rows=aoa(wb,sn);
+  const h=findHeaderRow(rows,["Date","Overall Score"]);
+  if(h<0) return out;
+  const cells=rows[h].map(c=>c==null?"":String(c).trim());
+  const di=cells.indexOf("Date"), oi=cells.indexOf("Overall Score"), fi=cells.indexOf("Food & Beverage"), vi=cells.indexOf("Volume");
+  for(let i=h+1;i<rows.length;i++){
+    const r=rows[i]||[]; const d=r[di]!=null?String(r[di]).trim():"";
+    if(!d) continue;
+    out.evolution.push({period:d, overall:num(r[oi]), fb:fi>=0?num(r[fi]):null, volume:vi>=0?num(r[vi]):null});
+  }
+  return out;
+}
+/* single-choice per-hotel tables (NPS / Overall / Pool / Beach) -> map hotel->{score,change,responses,dist} */
+function parseSingleChoice(rows){
+  const h=findHeaderRow(rows,["Hotel","Score"]);
+  const map={};
+  if(h<0)return map;
+  const cells=rows[h].map(c=>c==null?"":String(c).trim());
+  const hi=cells.indexOf("Hotel"),di=cells.indexOf("Single Choice")>=0?cells.indexOf("Single Choice"):cells.indexOf("Description"),si=cells.indexOf("Score"),ci=cells.indexOf("Change"),ri=cells.indexOf("Responses");
+  for(let i=h+1;i<rows.length;i++){ const r=rows[i]||[]; const ho=r[hi]!=null?String(r[hi]).trim():""; const d=r[di]!=null?String(r[di]).trim():"";
+    if(!ho)continue;
+    if(d==="Total"&&!map[ho]){ map[ho]={score:num(r[si]),change:num(r[ci]),responses:num(r[ri]),dist:{}}; }
+    else if(map[ho]&&/^\d{1,2}$/.test(d)){ map[ho].dist[d]=num(r[ri]); }
+  }
+  return map;
+}
+
+/* ---------- Aggregation for current scope ---------- */
+function ariaRest(question){ return DB.restRatings.filter(o=>o.hotel===HOTEL&&o.question===question); }
+function outletList(){
+  const cu=ariaRest("Cuisine");
+  return cu.map(c=>{ const sv=DB.restRatings.find(o=>o.hotel===HOTEL&&o.question==="Service"&&o.outlet===c.outlet);
+    return {outlet:c.outlet,cuisine:c.score,cuisineChg:c.change,service:sv?sv.score:null,serviceChg:sv?sv.change:null,responses:c.responses,dist:c.dist}; })
+    .sort((a,b)=>(b.responses||0)-(a.responses||0));
+}
+function scopeComments(scope){
+  let all=[...DB.comments.rest,...DB.comments.bar,...DB.comments.rs].filter(c=>c.hotel===HOTEL);
+  if(scope!=="__ALL__") all=all.filter(c=>c.outlet===scope);
+  return all;
+}
+function domainComments(domain){
+  const src = domain==="bar"?DB.comments.bar : domain==="rs"?DB.comments.rs : DB.comments.rest;
+  return src.filter(c=>c.hotel===HOTEL);
+}
+function domainRatings(domain){
+  if(domain==="bar") return DB.bars.filter(b=>b.hotel===HOTEL).map(b=>({outlet:b.outlet,score:b.score,change:b.change,responses:b.responses}));
+  if(domain==="rs")  return DB.roomservice.filter(b=>b.hotel===HOTEL).map(b=>({outlet:b.outlet,score:b.score,change:b.change,responses:b.responses}));
+  return outletList().map(o=>({outlet:o.outlet,score:o.cuisine,change:o.cuisineChg,service:o.service,serviceChg:o.serviceChg,responses:o.responses}));
+}
+function avg(arr){ const v=arr.filter(x=>x!=null); return v.length?v.reduce((a,b)=>a+b,0)/v.length:null; }
+// weighted average: items=[{v:score, w:responses}] — matches ReviewPro's official aggregation
+function wavg(items){ let ws=0,rs=0; items.forEach(it=>{ if(it.v!=null){ const w=(it.w!=null&&it.w>0)?it.w:1; ws+=it.v*w; rs+=w; } }); return rs?ws/rs:null; }
+
+/* ---------- RENDER ---------- */
+function scopeLabel(scope){ if(scope==="__ALL__")return "All F&B — Ikos Aria"; const sp=parseScope(scope); return (sp?sp.name:scope)+" — Ikos Aria"; }
+
+function render(){
+  // History always renders (works from seed snapshots, no file needed)
+  renderHistory();
+  const hasData = !!(DB && DB.restRatings && DB.restRatings.length);
+  toggleDataTabs(hasData);
+  if(!hasData){ $("#metaRange").textContent="History loaded · Import an export for the current picture"; return; }
+  const scope=$("#scopeSel").value;
+  $("#metaRange").textContent = DB.range? (DB.range+(DB.generated?(" · "+DB.generated):"")) : "—";
+  $$(".scope").forEach(e=>e.textContent=scopeLabel(scope));
+  const sp=parseScope(scope);
+  // for outlets/covers, special venue scopes behave like ALL (overview shows the venue detail)
+  const tableScope = sp? "__ALL__" : scope;
+  // route comments domain/outlet when a bar/rs venue is picked from the top selector
+  if(sp){
+    if(sp.kind==="bar"){ cmtDomain="bar"; cmtOutlet=sp.name; }
+    else if(sp.kind==="rs"){ cmtDomain="rs"; cmtOutlet="__ALL__"; }
+  }
+  renderOverview(scope);
+  renderOutlets(tableScope);
+  renderComments(tableScope);
+  renderCovers(tableScope);
+  renderBench();
+  renderRecs(tableScope);
+}
+function toggleDataTabs(has){
+  // tabs needing a loaded file
+  ["over","outlets","comments","covers","bench","recs"].forEach(v=>{
+    const tab=$(`.tab[data-v="${v}"]`); if(tab) tab.style.opacity=has?"1":"0.45";
+  });
+  $("#scopeSel").style.display=has?"":"none";
+  // if no data and currently on a data tab, show prompt
+  const cur=$(".tab.on")?$(".tab.on").dataset.v:"history";
+  if(!has && cur!=="history"){ /* allow viewing but show prompts */ }
+  $("#noDataPrompt") && ($("#noDataPrompt").style.display=has?"none":"block");
+}
+
+function pill(score){ if(score==null)return '<span class="muted">—</span>'; const c=score>=9.3?"s-ex":score>=8.7?"s-ok":"s-lo"; return `<span class="score-pill ${c}">${score.toFixed(2)}</span>`; }
+function deltaHtml(d){ if(d==null)return '<span class="flat">—</span>'; const c=d>0.001?"up":d<-0.001?"down":"flat"; const ar=d>0.001?"▲":d<-0.001?"▼":"–"; return `<span class="delta-s ${c}">${ar} ${d>0?"+":""}${d.toFixed(2)}</span>`; }
+
+function parseScope(scope){
+  if(!scope||scope==="__ALL__") return null;
+  const m=scope.match(/^(bar|rs|pb)::(.+)$/);
+  if(!m) return null;
+  return {kind:m[1], name:m[2]};
+}
+function renderOverviewSpecial(sp){
+  const cont=$("#over-kpis");
+  let rec=null, label=sp.name, sub="";
+  if(sp.kind==="bar"){ rec=DB.bars.find(b=>b.hotel===HOTEL&&b.outlet===sp.name); sub="Bar"; }
+  else if(sp.kind==="rs"){ rec=DB.roomservice.find(b=>b.hotel===HOTEL&&b.outlet===sp.name); sub="Room Service"; }
+  else if(sp.kind==="pb"){ rec=(sp.name.match(/Pool/i)?DB.poolTable:DB.beachTable); rec=rec&&rec[HOTEL]; sub="Pool & Beach Experience"; }
+  $("#over-lead").textContent=`Data exclusively for: ${label} (${sub}).`;
+  const cards=[];
+  if(rec){
+    cards.push(kpiCard("Score",rec.score,rec.change,rec.score>=9.3?"green":rec.score<8.9?"rust":"navy","current score"));
+    cards.push(kpiCardRaw("Responses",rec.responses!=null?rec.responses.toLocaleString("el-GR"):"—","","survey volume"));
+  } else cards.push(kpiCardRaw("—","—","","No data"));
+  cont.innerHTML=cards.join("");
+  $("#over-outlets").innerHTML=rec?`<div style="margin-bottom:16px"><div style="display:flex;justify-content:space-between;font-weight:700;font-size:13.5px;margin-bottom:6px"><span class="outlet-name">${esc(label)}</span><span class="muted tiny">${rec.responses||0} resp</span></div><div class="bar-row"><span class="bl tiny">Score</span><div class="bar-track"><div class="bar-fill ${rec.score>=9.3?'t-green':rec.score>=8.7?'t-amber':''}" style="width:${Math.max(2,((rec.score-7.5)/2.5)*100)}%"></div></div><span class="bv">${rec.score!=null?rec.score.toFixed(2):"—"}</span></div></div>`:'<p class="muted">—</p>';
+  const order=["10","9","8","7","6","5","4","3","2","1"];
+  const dist=(rec&&rec.dist)?rec.dist:{};
+  const total=Object.values(dist).reduce((a,b)=>a+(b||0),0);
+  $("#over-dist-n").textContent=total?"hover for exact numbers":"—";
+  if(total){
+    const seg=order.map(k=>{const v=dist[k]||0;if(!v)return "";const w=(v/total*100);const cls=k>="8"?("dseg-"+k):(k==="7"?"dseg-7":"dseg-lo");return `<span class="${cls}" style="width:${w}%" title="Score ${k}: ${v.toLocaleString("el-GR")} of ${total.toLocaleString("el-GR")} (${w.toFixed(1)}%)"></span>`;}).join("");
+    const lo=order.filter(k=>+k<=6).reduce((a,k)=>a+(dist[k]||0),0); const ten=dist['10']||0;
+    $("#over-dist").innerHTML=`<div style="margin-bottom:14px"><div style="display:flex;justify-content:space-between;font-size:12.5px;font-weight:700;margin-bottom:5px"><span>${esc(label)}</span><span class="muted tiny" style="font-weight:400">${total.toLocaleString("el-GR")} ratings</span></div><div class="dist">${seg}</div>
+      <div style="display:flex;justify-content:space-between;margin-top:7px;font-size:12px"><span><b style="color:var(--green)">${((ten/total)*100).toFixed(1)}%</b> = ${ten.toLocaleString("el-GR")}/${total.toLocaleString("el-GR")} gave 10</span><span class="muted"><b style="color:var(--rust)">${((lo/total)*100).toFixed(1)}%</b> = ${lo.toLocaleString("el-GR")}/${total.toLocaleString("el-GR")} at ≤6</span></div></div>`;
+  } else $("#over-dist").innerHTML='<p class="muted tiny">No distribution for this outlet.</p>';
+  $("#over-gri-panel").style.display="none";
+  $("#over-dept-panel").style.display="none";
+  const br=$("#over-barsrs-row"); if(br) br.style.display="none";
+}
+function renderOverview(scope){
+  const cont=$("#over-kpis"); 
+  let cu,sv,resp,leadTxt,outletsForView;
+  // special single-venue scopes (bars / room service / pool-beach)
+  const special=parseScope(scope);
+  if(special){
+    renderOverviewSpecial(special);
+    return;
+  }
+  if(scope==="__ALL__"){
+    const list=outletList().filter(o=>!/Dine Out/i.test(o.outlet)); // mains for averages
+    cu=wavg(list.map(o=>({v:o.cuisine,w:o.responses}))); sv=wavg(list.map(o=>({v:o.service,w:o.responses}))); resp=list.reduce((a,o)=>a+(o.responses||0),0);
+    outletsForView=outletList();
+    leadTxt=`Weighted avg of ${list.length} main restaurants (weighted by responses). Service comes out ${sv&&cu?((sv-cu)>=0?"+":"")+(sv-cu).toFixed(2):"—"} vs cuisine — ${sv&&cu&&sv>cu?"cuisine is the focus area.":"balanced picture."}`;
+  } else {
+    const o=outletList().find(x=>x.outlet===scope)||{};
+    cu=o.cuisine; sv=o.service; resp=o.responses; outletsForView=[o];
+    leadTxt=`Data exclusively for ${scope}.`;
+  }
+  $("#over-lead").textContent=leadTxt;
+  const ariaOverall=DB.overallTable&&DB.overallTable[HOTEL];
+  const ariaNps=DB.npsTable&&DB.npsTable[HOTEL];
+  const gap=(sv!=null&&cu!=null)?(sv-cu):null;
+  const cards=[];
+  if(scope==="__ALL__"&&ariaOverall) cards.push(kpiCard("Overall (Aria)",ariaOverall.score,ariaOverall.change,"navy","resort-wide score"));
+  cards.push(kpiCard("Cuisine",cu,scope==="__ALL__"?null:outletsForView[0].cuisineChg,cu!=null&&cu<8.9?"rust":"",scope==="__ALL__"?"restaurant avg":"score"));
+  cards.push(kpiCard("Service",sv,scope==="__ALL__"?null:outletsForView[0].serviceChg,"green",scope==="__ALL__"?"restaurant avg":"score"));
+  cards.push(kpiCard("Gap (Svc−Cuis)",gap,null,gap!=null&&gap>0.35?"rust":"",gap!=null&&gap>0?"service above cuisine":"—",false,1));
+  if(scope==="__ALL__"&&ariaNps) cards.push(kpiCard("NPS (Aria)",ariaNps.score,ariaNps.change,"green","loyalty",false,1));
+  if(scope==="__ALL__"&&DB.poolTable&&DB.poolTable[HOTEL]) cards.push(kpiCard("Pool Exp.",DB.poolTable[HOTEL].score,DB.poolTable[HOTEL].change,"","part of F&B"));
+  if(scope==="__ALL__"&&DB.beachTable&&DB.beachTable[HOTEL]) cards.push(kpiCard("Beach Exp.",DB.beachTable[HOTEL].score,DB.beachTable[HOTEL].change,"","part of F&B"));
+  cards.push(kpiCardRaw("Responses",resp!=null?resp.toLocaleString("el-GR"):"—","","survey volume"));
+  cont.innerHTML=cards.join("");
+
+  // outlets cuisine/service bars
+  const ov=$("#over-outlets"); const list=outletsForView.filter(o=>o.cuisine!=null);
+  const maxScale=10, minScale=7.5;
+  ov.innerHTML=list.map(o=>{
+    const cw=Math.max(2,((o.cuisine-minScale)/(maxScale-minScale))*100);
+    const sw=o.service!=null?Math.max(2,((o.service-minScale)/(maxScale-minScale))*100):0;
+    return `<div style="margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;font-weight:700;font-size:13.5px;margin-bottom:6px"><span class="outlet-name">${esc(o.outlet)}</span><span class="muted tiny">${o.responses||0} resp</span></div>
+      <div class="bar-row" style="margin-bottom:5px"><span class="bl tiny">Cuisine</span><div class="bar-track"><div class="bar-fill ${o.cuisine>=9.3?'t-green':o.cuisine>=8.7?'t-amber':''}" style="width:${cw}%"></div></div><span class="bv">${o.cuisine.toFixed(2)}</span></div>
+      <div class="bar-row"><span class="bl tiny">Service</span><div class="bar-track"><div class="bar-fill t-gold" style="width:${sw}%"></div></div><span class="bv">${o.service!=null?o.service.toFixed(2):"—"}</span></div>
+    </div>`;
+  }).join("")||'<p class="muted">—</p>';
+
+  // distribution — Cuisine + Service, with absolute-count tooltips
+  const order=["10","9","8","7","6","5","4","3","2","1"];
+  function aggDist(question){
+    const agg={};
+    DB.restRatings.filter(o=>o.hotel===HOTEL&&o.question===question&&(scope==="__ALL__"?!/Dine Out/i.test(o.outlet):o.outlet===scope))
+      .forEach(o=>{ for(const k in o.dist){ agg[k]=(agg[k]||0)+(o.dist[k]||0); } });
+    return agg;
+  }
+  function distBar(agg,label){
+    const total=Object.values(agg).reduce((a,b)=>a+b,0);
+    if(!total) return "";
+    const seg=order.map(k=>{ const v=agg[k]||0; if(!v)return ""; const w=(v/total*100); const cls=k>="8"?("dseg-"+k):(k==="7"?"dseg-7":"dseg-lo");
+      return `<span class="${cls}" style="width:${w}%" title="Score ${k}: ${v.toLocaleString("el-GR")} of ${total.toLocaleString("el-GR")} (${w.toFixed(1)}%)"></span>`; }).join("");
+    const lo=order.filter(k=>+k<=6).reduce((a,k)=>a+(agg[k]||0),0);
+    const ten=agg['10']||0;
+    return `<div style="margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;font-size:12.5px;font-weight:700;margin-bottom:5px"><span>${label}</span><span class="muted tiny" style="font-weight:400">${total.toLocaleString("el-GR")} ratings</span></div>
+      <div class="dist">${seg}</div>
+      <div style="display:flex;justify-content:space-between;margin-top:7px;font-size:12px">
+        <span><b style="color:var(--green)">${((ten/total)*100).toFixed(1)}%</b> = ${ten.toLocaleString("el-GR")}/${total.toLocaleString("el-GR")} gave 10</span>
+        <span class="muted"><b style="color:var(--rust)">${((lo/total)*100).toFixed(1)}%</b> = ${lo.toLocaleString("el-GR")}/${total.toLocaleString("el-GR")} at ≤6</span>
+      </div></div>`;
+  }
+  const cuAgg=aggDist("Cuisine"), svAgg=aggDist("Service");
+  const totalCu=Object.values(cuAgg).reduce((a,b)=>a+b,0);
+  $("#over-dist-n").textContent=totalCu?"hover for exact numbers":"—";
+  const distHtml=distBar(cuAgg,"Cuisine")+distBar(svAgg,"Service");
+  $("#over-dist").innerHTML=distHtml||'<p class="muted tiny">No distribution for this scope.</p>';
+
+  // bars + room service / pool-beach summary (only on ALL scope)
+  const barsRow=$("#over-barsrs-row");
+  if(scope==="__ALL__"){
+    barsRow.style.display="";
+    const bars=DB.bars.filter(b=>b.hotel===HOTEL).sort((a,b)=>(b.responses||0)-(a.responses||0));
+    $("#over-bars").innerHTML=bars.length?`<table><thead><tr><th>Bar</th><th>Score</th><th>vs last yr</th><th>Resp</th></tr></thead><tbody>${
+      bars.map(b=>`<tr class="clk" onclick="drillBar('${esc(b.outlet)}')"><td class="outlet-name">${esc(b.outlet)}</td><td>${pill(b.score)}</td><td>${deltaHtml(b.change)}</td><td class="muted">${b.responses||0}</td></tr>`).join("")
+    }</tbody></table>`:'<p class="muted" style="padding:14px">—</p>';
+    const rs=DB.roomservice.filter(b=>b.hotel===HOTEL);
+    const pbRows=[];
+    rs.forEach(b=>pbRows.push({n:b.outlet,s:b.score,c:b.change,r:b.responses,t:"rs"}));
+    if(DB.poolTable&&DB.poolTable[HOTEL]) pbRows.push({n:"Pool Experience",s:DB.poolTable[HOTEL].score,c:DB.poolTable[HOTEL].change,r:DB.poolTable[HOTEL].responses,t:"pb"});
+    if(DB.beachTable&&DB.beachTable[HOTEL]) pbRows.push({n:"Beach Experience",s:DB.beachTable[HOTEL].score,c:DB.beachTable[HOTEL].change,r:DB.beachTable[HOTEL].responses,t:"pb"});
+    $("#over-rspb").innerHTML=pbRows.length?`<table><thead><tr><th>Outlet</th><th>Score</th><th>vs last yr</th><th>Resp</th></tr></thead><tbody>${
+      pbRows.map(p=>`<tr><td class="outlet-name">${esc(p.n)}</td><td>${pill(p.s)}</td><td>${deltaHtml(p.c)}</td><td class="muted">${p.r||0}</td></tr>`).join("")
+    }</tbody></table>`:'<p class="muted" style="padding:14px">—</p>';
+  } else barsRow.style.display="none";
+
+  // GRI
+  const gp=$("#over-gri-panel");
+  if(DB.reviews&&DB.reviews.aria){ gp.style.display="block"; const a=DB.reviews.aria;
+    $("#over-gri").innerHTML=`<div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap">
+      <div><div class="kpi" style="box-shadow:none;border:none;padding:0"><div class="val" style="margin:0">${a.gri!=null?a.gri.toFixed(1)+'<small>%</small>':"—"}</div></div></div>
+      <div style="flex:1;min-width:160px"><div class="tiny muted">Change</div>${deltaHtml(a.change)}
+      ${a.up?`<div class="tiny" style="margin-top:8px"><b class="up">Trending up:</b> ${esc(a.up)}</div>`:""}
+      ${a.down?`<div class="tiny"><b class="down">Trending down:</b> ${esc(a.down)}</div>`:""}</div></div>`;
+  } else gp.style.display="none";
+
+  // departments ranking with category group filter
+  const dp=$("#over-dept-panel");
+  if(DB.ranking&&DB.ranking.length&&scope==="__ALL__"){ dp.style.display="block";
+    // category chips — only categories that have departments present
+    const present={}; DB.ranking.forEach(d=>{ present[deptCategory(d.name)]=true; });
+    const cats=Object.keys(DEPT_CATEGORIES).filter(c=>present[c]);
+    if(!cats.includes(deptCat)) deptCat=cats[0]||"F&B";
+    $("#dept-cat").innerHTML=cats.map(c=>`<button class="tab ${c===deptCat?'on':''}" data-cat="${esc(c)}">${esc(c)}</button>`).join("");
+    const filtered=DB.ranking.filter(d=>deptCategory(d.name)===deptCat);
+    const rows=filtered.map(d=>`<tr><td class="outlet-name">${esc(d.name)}</td><td>${pill(d.score)}</td><td>${deltaHtml(d.scoreChange)}</td><td><span class="rank">${esc(d.rank)}</span> <span class="tiny muted">(${esc(d.rankChange)})</span></td><td class="muted tiny">${d.responses||0}</td></tr>`).join("");
+    $("#over-dept").innerHTML=`<table><thead><tr><th>Department</th><th>Score</th><th>vs last yr</th><th>Group rank</th><th>Resp</th></tr></thead><tbody>${rows}</tbody></table>`;
+  } else dp.style.display="none";
+}
+function kpiCard(lab,val,delta,cls,note,_,d=2){ return `<div class="kpi ${cls?'k-'+cls:''}"><div class="lab">${lab}</div><div class="val">${val!=null?(val).toFixed(d):'—'}${val!=null&&d===2?'<small>/10</small>':''}</div>${delta!=null?'<div class="delta">'+deltaHtml(delta)+'</div>':(note?'<div class="note">'+note+'</div>':'')}${delta!=null&&note?'<div class="note">'+note+'</div>':''}</div>`; }
+function kpiCardRaw(lab,val,cls,note){ return `<div class="kpi ${cls?'k-'+cls:''}"><div class="lab">${lab}</div><div class="val">${val}</div><div class="note">${note}</div></div>`; }
+
+function ratingTable(rows,cols){
+  if(!rows.length)return '<p class="muted" style="padding:16px">—</p>';
+  const clickAttr=r=> r._clk?`class="clk" onclick="drill('${esc(r._clk)}')"` : r._drillBar?`class="clk" onclick="drillBar('${esc(r._drillBar)}')"` : r._drillRs?`class="clk" onclick="drillRs('${esc(r._drillRs)}')"` : "";
+  return `<table><thead><tr>${cols.map(c=>`<th>${c.h}</th>`).join("")}</tr></thead><tbody>${rows.map(r=>`<tr ${clickAttr(r)}>${cols.map(c=>`<td>${c.f(r)}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+}
+function renderOutlets(scope){
+  let list=outletList(); if(scope!=="__ALL__") list=list.filter(o=>o.outlet===scope);
+  $("#out-rest-table").innerHTML=ratingTable(list.map(o=>({...o,_clk:o.outlet})),[
+    {h:"Restaurant",f:o=>`<span class="outlet-name">${esc(o.outlet)}</span>`},
+    {h:"Cuisine",f:o=>pill(o.cuisine)+" "+deltaHtml(o.cuisineChg)},
+    {h:"Service",f:o=>pill(o.service)+" "+deltaHtml(o.serviceChg)},
+    {h:"Gap",f:o=>{const g=(o.service!=null&&o.cuisine!=null)?o.service-o.cuisine:null;return g==null?"—":`<span class="delta-s ${g>0.35?'down':g>0?'flat':'up'}">${g>0?"+":""}${g.toFixed(2)}</span>`;}},
+    {h:"Responses",f:o=>`<span class="muted">${o.responses||0}</span>`}
+  ]);
+  // bars — clickable, drills into bar comments
+  let bars=DB.bars.filter(b=>b.hotel===HOTEL); 
+  $("#out-bar-table").innerHTML=ratingTable(bars.sort((a,b)=>(b.responses||0)-(a.responses||0)).map(b=>({...b,_drillBar:b.outlet})),[
+    {h:"Bar",f:b=>`<span class="outlet-name">${esc(b.outlet)}</span>`},
+    {h:"Score",f:b=>pill(b.score)+" "+deltaHtml(b.change)},
+    {h:"Resp",f:b=>`<span class="muted">${b.responses||0}</span>`}
+  ]);
+  let rs=DB.roomservice.filter(b=>b.hotel===HOTEL);
+  $("#out-rs-table").innerHTML=ratingTable(rs.sort((a,b)=>(b.responses||0)-(a.responses||0)).map(b=>({...b,_drillRs:b.outlet})),[
+    {h:"Outlet",f:b=>`<span class="outlet-name">${esc(b.outlet)}</span>`},
+    {h:"Score",f:b=>pill(b.score)+" "+deltaHtml(b.change)},
+    {h:"Resp",f:b=>`<span class="muted">${b.responses||0}</span>`}
+  ]);
+  // Pool & Beach Experience
+  const pb=[];
+  if(DB.poolTable&&DB.poolTable[HOTEL]) pb.push({name:"Pool Experience",...DB.poolTable[HOTEL]});
+  if(DB.beachTable&&DB.beachTable[HOTEL]) pb.push({name:"Beach Experience",...DB.beachTable[HOTEL]});
+  $("#out-pb-table").innerHTML=pb.length?`<table><thead><tr><th>Experience</th><th>Score</th><th>vs last yr</th><th>Resp</th></tr></thead><tbody>${
+    pb.map(p=>`<tr><td class="outlet-name">${esc(p.name)}</td><td>${pill(p.score)}</td><td>${deltaHtml(p.change)}</td><td class="muted">${p.responses||0}</td></tr>`).join("")
+  }</tbody></table>`:'<p class="muted" style="padding:16px">No Pool/Beach data in this export.</p>';
+}
+function drill(outlet){ $("#scopeSel").value=outlet; cmtDomain="rest"; cmtOutlet="__ALL__"; render(); setView("comments"); window.scrollTo({top:0,behavior:"smooth"}); }
+function drillBar(outlet){ cmtDomain="bar"; cmtOutlet=outlet; render(); setView("comments"); window.scrollTo({top:0,behavior:"smooth"}); }
+function drillRs(outlet){ cmtDomain="rs"; cmtOutlet="__ALL__"; render(); setView("comments"); window.scrollTo({top:0,behavior:"smooth"}); }
+window.drill=drill; window.drillBar=drillBar; window.drillRs=drillRs;
+
+function renderComments(scope){
+  const domain=cmtDomain;
+  const domainLabel={rest:"Restaurants",bar:"Bars",rs:"Room Service"}[domain];
+  let all=domainComments(domain);
+  // apply outlet sub-filter (works for all domains)
+  if(cmtOutlet!=="__ALL__") all=all.filter(c=>c.outlet===cmtOutlet);
+  const low=all.filter(c=>c.score!=null&&c.score<=7);
+  const pos=all.filter(c=>c.score!=null&&c.score>=9);
+  // theme counts
+  const counts={};
+  low.forEach(c=>{ classify(c.comment,domain).forEach(k=>counts[k]=(counts[k]||0)+1); });
+  const themeArr=Object.entries(counts).sort((a,b)=>b[1]-a[1]);
+  const scopeNote=cmtOutlet==="__ALL__"?domainLabel:cmtOutlet;
+  $("#cmt-theme-n").textContent=`${scopeNote} · ${low.length} comments ≤7`;
+  const maxC=themeArr.length?themeArr[0][1]:1;
+  $("#cmt-themes").innerHTML=themeArr.length?themeArr.map(([k,v])=>{
+    const kind=themeKind(k,domain);const cls=kind==="kitchen"?"":(kind==="service"?"t-amber":kind==="bar"?"t-gold":"t-gold");
+    return `<div class="bar-row"><span class="bl">${esc(k)}</span><div class="bar-track"><div class="bar-fill ${cls}" style="width:${(v/maxC*100)}%"></div></div><span class="bv">${v}</span></div>`;
+  }).join(""):'<p class="muted tiny">No themes detected (too few or clean comments).</p>';
+
+  // split + complaints rate vs total surveys
+  const nLow=low.length,nPos=pos.length,nMid=all.length-nLow-nPos;
+  // total surveys for this domain/outlet (response volume, not just commented)
+  let totalSurveys=0;
+  const ratingsForRate=domainRatings(domain).filter(r=>cmtOutlet==="__ALL__"||r.outlet===cmtOutlet);
+  ratingsForRate.forEach(r=>totalSurveys+=(r.responses||0));
+  const complaintRate=totalSurveys?(nLow/totalSurveys*100):null;
+  $("#cmt-split").innerHTML=`
+    <div class="dist"><span class="dseg-10" style="width:${all.length?nPos/all.length*100:0}%" title="Positive ≥9: ${nPos}"></span><span class="dseg-7" style="width:${all.length?nMid/all.length*100:0}%" title="Score 8: ${nMid}"></span><span class="dseg-lo" style="width:${all.length?nLow/all.length*100:0}%" title="≤7: ${nLow}"></span></div>
+    <div style="display:flex;justify-content:space-between;margin-top:12px;font-size:12.5px">
+      <span><b style="color:var(--green)">${nPos}</b> positive (≥9)</span>
+      <span class="muted"><b style="color:var(--amber)">${nMid}</b> 8</span>
+      <span class="muted"><b style="color:var(--rust)">${nLow}</b> ≤7</span>
+    </div>
+    <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--line)">
+      <div style="display:flex;justify-content:space-between;align-items:baseline">
+        <span style="font-size:13px;font-weight:700">Complaint rate</span>
+        <span style="font-size:22px;font-weight:800;color:${complaintRate!=null&&complaintRate>5?'var(--rust)':'var(--ink)'}">${complaintRate!=null?complaintRate.toFixed(1)+"%":"—"}</span>
+      </div>
+      <p class="tiny muted" style="margin-top:4px">${nLow} comments ≤7 out of ${totalSurveys.toLocaleString("el-GR")} total surveys ${cmtOutlet==="__ALL__"?domainLabel.toLowerCase():esc(cmtOutlet)}. (${all.length} survey left a written comment)</p>
+    </div>`;
+
+  // by-outlet panel (score + low-comment volume per point) — click to filter
+  const byPanel=$("#cmt-byoutlet-panel");
+  if(domain==="rs"){ byPanel.style.display="none"; }
+  else {
+    byPanel.style.display="block";
+    const ratings=domainRatings(domain);
+    const allD=domainComments(domain);
+    const lowByOutlet={}; allD.filter(c=>c.score!=null&&c.score<=7).forEach(c=>lowByOutlet[c.outlet]=(lowByOutlet[c.outlet]||0)+1);
+    const allByOutlet={}; allD.forEach(c=>allByOutlet[c.outlet]=(allByOutlet[c.outlet]||0)+1);
+    const rows=ratings.filter(r=>r.score!=null).sort((a,b)=>(a.score-b.score));
+    const isRest=domain==="rest";
+    const svHead=isRest?"<th>Cuisine</th><th>Service</th>":"<th>Score</th>";
+    const colspan=isRest?2:1;
+    const resetRow=`<tr class="clk" onclick="setCmtOutlet('__ALL__')" style="${cmtOutlet==='__ALL__'?'background:var(--parch2)':''}"><td class="outlet-name">${cmtOutlet==='__ALL__'?'▸ ':''}All (${domainLabel})</td>${isRest?'<td>—</td><td>—</td>':'<td>—</td>'}<td>—</td><td><b style="color:var(--rust)">${Object.values(lowByOutlet).reduce((a,b)=>a+b,0)}</b></td><td class="muted">${Object.values(allByOutlet).reduce((a,b)=>a+b,0)}</td></tr>`;
+    $("#cmt-byoutlet").innerHTML=`<table><thead><tr><th>${domain==="bar"?"Bar":"Restaurant"}</th>${svHead}<th>vs last yr</th><th>Comments ≤7</th><th>Total</th></tr></thead><tbody>${resetRow}${
+      rows.map(r=>`<tr class="clk" onclick="setCmtOutlet('${esc(r.outlet)}')" style="${cmtOutlet===r.outlet?'background:var(--parch2)':''}"><td class="outlet-name">${cmtOutlet===r.outlet?'▸ ':''}${esc(r.outlet)}</td>${isRest?`<td>${pill(r.score)}</td><td>${pill(r.service)}</td>`:`<td>${pill(r.score)}</td>`}<td>${deltaHtml(r.change)}</td><td>${lowByOutlet[r.outlet]?`<b style="color:var(--rust)">${lowByOutlet[r.outlet]}</b>`:'<span class="muted">0</span>'}</td><td class="muted">${allByOutlet[r.outlet]||0}</td></tr>`).join("")
+    }</tbody></table>`;
+  }
+
+  // list (worst first)
+  const sorted=low.slice().sort((a,b)=>(a.score-b.score)||(b.comment.length-a.comment.length)).slice(0,40);
+  $("#cmt-list-n").textContent="showing "+sorted.length+" / "+low.length;
+  $("#cmt-list").innerHTML=sorted.map(c=>{
+    const cls=c.score<=5?"s-lo":c.score<=7?"s-ok":"s-ex";
+    const th=classify(c.comment,domain);
+    return `<div class="cmt"><div class="ch"><span class="cs ${cls}">${c.score}</span><span class="out">${esc(c.outlet)}</span><span class="dt">${esc(c.date)}${c.name?" · "+esc(c.name):""}</span></div>
+      <div class="body">${esc(c.comment)}</div>
+      ${th.length?`<div class="themes">${th.map(t=>`<span class="thm">${esc(t)}</span>`).join("")}</div>`:""}</div>`;
+  }).join("")||'<p class="muted">No comments ≤7 — strong picture.</p>';
+}
+window.setCmtOutlet=function(outlet){ cmtOutlet=outlet; renderComments($("#scopeSel").value); };
+
+/* ---------- Covers & Hours ---------- */
+function renderCovers(scope){
+  const hasCovers = COVERS && Object.keys(COVERS.byOutlet).length;
+  $("#cov-empty").style.display = hasCovers?"none":"block";
+  $("#cov-body").style.display = hasCovers?"block":"none";
+  if(!hasCovers) return;
+
+  const sd=outletList(); // for scores
+  const scoreOf=name=>{ const o=sd.find(x=>x.outlet===name); return o?{cuisine:o.cuisine,service:o.service}:{}; };
+
+  // filter by scope
+  let names=Object.keys(COVERS.byOutlet);
+  if(scope!=="__ALL__") names=names.filter(n=>n===scope);
+  names.sort((a,b)=>REST_ORDER.indexOf(a)-REST_ORDER.indexOf(b));
+
+  // KPI totals
+  let bf=0,lu=0,di=0;
+  names.forEach(n=>{const o=COVERS.byOutlet[n];bf+=o.bf;lu+=o.lu;di+=o.di;});
+  const tot=bf+lu+di;
+  const rng=COVERS.range?`${fmtDate(COVERS.range.from)} → ${fmtDate(COVERS.range.to)}`:"—";
+  $("#cov-lead").innerHTML=`Cover volume per service period next to the score, with official hours. <b>Covers period:</b> ${esc(rng)} · <b>${COVERS.years.join(", ")}</b>. ${COVERS.years.length>1?"Combined years — useful for history.":""}`;
+  $("#cov-kpis").innerHTML=[
+    kpiCardRaw("Total Covers",tot.toLocaleString("el-GR"),"navy",`${rng}`),
+    kpiCardRaw("Breakfast",bf.toLocaleString("el-GR"),"", tot?((bf/tot*100).toFixed(1)+"% of volume"):""),
+    kpiCardRaw("Lunch",lu.toLocaleString("el-GR"),"", tot?((lu/tot*100).toFixed(1)+"% of volume"):""),
+    kpiCardRaw("Dinner",di.toLocaleString("el-GR"),"green", tot?((di/tot*100).toFixed(1)+"% of volume"):"")
+  ].join("");
+
+  // per-period stacked per outlet
+  const maxOutlet=Math.max(1,...names.map(n=>{const o=COVERS.byOutlet[n];return o.bf+o.lu+o.di;}));
+  $("#cov-split-n").textContent=names.length+" restaurants";
+  $("#cov-split").innerHTML=names.map(n=>{
+    const o=COVERS.byOutlet[n]; const t=o.bf+o.lu+o.di;
+    const w=v=>t?(v/maxOutlet*100):0;
+    return `<div style="margin-bottom:13px">
+      <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;margin-bottom:5px"><span class="outlet-name">${esc(n)}</span><span class="muted tiny">${t.toLocaleString("el-GR")}</span></div>
+      <div class="dist" style="height:22px" title="BF ${o.bf} · LU ${o.lu} · DI ${o.di}">
+        <span class="dseg-9" style="width:${w(o.bf)}%"></span>
+        <span class="dseg-7" style="width:${w(o.lu)}%"></span>
+        <span class="dseg-10" style="width:${w(o.di)}%"></span>
+      </div></div>`;
+  }).join("")+`<div style="display:flex;gap:16px;margin-top:10px;font-size:12px" class="muted">
+    <span><span style="display:inline-block;width:10px;height:10px;background:#5C9183;border-radius:2px"></span> Breakfast</span>
+    <span><span style="display:inline-block;width:10px;height:10px;background:#E2C275;border-radius:2px"></span> Lunch</span>
+    <span><span style="display:inline-block;width:10px;height:10px;background:#2E6B5E;border-radius:2px"></span> Dinner</span></div>`;
+
+  // scatter: total covers vs cuisine score
+  const pts=names.map(n=>{const o=COVERS.byOutlet[n];const s=scoreOf(n);return{n,di:o.bf+o.lu+o.di,cu:s.cuisine};}).filter(p=>p.cu!=null&&p.di>0);
+  if(pts.length){
+    const maxDi=Math.max(...pts.map(p=>p.di));
+    const W=440,H=240,pad=40;
+    const x=v=>pad+(v/maxDi)*(W-pad-15);
+    const y=v=>H-pad-((v-8)/(10-8))*(H-pad-15); // score 8..10
+    let svg=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto">`;
+    [8,8.5,9,9.5,10].forEach(g=>{svg+=`<line x1="${pad}" y1="${y(g)}" x2="${W-15}" y2="${y(g)}" stroke="var(--line)"/><text x="${pad-6}" y="${y(g)+3}" text-anchor="end" font-size="9" fill="var(--muted)">${g.toFixed(1)}</text>`;});
+    pts.forEach(p=>{const cx=x(p.di),cy=y(Math.max(8,Math.min(10,p.cu)));const col=p.cu>=9.3?"#2E6B5E":p.cu>=8.7?"#B57A1F":"#9B3B2E";
+      svg+=`<circle cx="${cx}" cy="${cy}" r="6" fill="${col}" opacity="0.85"/><text x="${cx}" y="${cy-9}" text-anchor="middle" font-size="9" fill="var(--ink)" font-weight="700">${esc(p.n.replace(/ \(Dine Out\)/,""))}</text>`;});
+    svg+=`<text x="${W/2}" y="${H-6}" text-anchor="middle" font-size="10" fill="var(--muted)">Total covers →</text><text x="12" y="${H/2}" text-anchor="middle" font-size="10" fill="var(--muted)" transform="rotate(-90 12 ${H/2})">Cuisine</text></svg>`;
+    $("#cov-scatter").innerHTML=svg+`<p class="tiny muted" style="margin-top:6px">Each dot = one restaurant. Top-left = high score with low volume; bottom-right = high volume but pressure on the score.</p>`;
+  } else $("#cov-scatter").innerHTML='<p class="muted tiny">Not enough data for correlation.</p>';
+
+  // table — full-day hours per period + kitchen→satellite allocation
+  $("#cov-table").innerHTML=`<table><thead><tr>
+    <th>Restaurant / Kitchen</th><th>Cuisine</th><th>Service</th><th>Breakfast<br><span class="tiny muted" style="font-weight:400">covers · hours</span></th><th>Lunch<br><span class="tiny muted" style="font-weight:400">covers · hours</span></th><th>Dinner<br><span class="tiny muted" style="font-weight:400">covers · hours</span></th><th>Total production</th></tr></thead><tbody>${
+    names.map(n=>{const o=COVERS.byOutlet[n];const s=scoreOf(n);const h=HOURS[n]||{};
+      const cell=(cov,hrs)=>`${cov?`<b>${cov.toLocaleString("el-GR")}</b>`:'<span class="muted">—</span>'}<br><span class="tiny muted">${esc(hrs&&hrs!=="—"?hrs:"closed")}</span>`;
+      const alloc=COVER_ALLOC[n]||[];
+      const allocItems=alloc.map(a=>({to:a.to, n:Math.round(o.lu*a.pct), pct:a.pct})).filter(a=>a.n>0||o.lu>0);
+      const allocTotal=allocItems.reduce((x,a)=>x+a.n,0);
+      const ownTotal=o.bf+o.lu+o.di;
+      const grandTotal=ownTotal+allocTotal;
+      let main=`<tr><td class="outlet-name">${esc(n)}<br><span class="tiny muted" style="font-weight:400">${esc(h.cuisine||"")}${alloc.length?' · cost center':''}</span></td><td>${pill(s.cuisine)}</td><td>${pill(s.service)}</td>
+        <td>${cell(o.bf,h.bf)}</td>
+        <td>${cell(o.lu,h.lu)}</td>
+        <td>${cell(o.di,h.di)}</td>
+        <td><b>${grandTotal.toLocaleString("el-GR")}</b>${allocTotal?`<br><span class="tiny muted">own ${ownTotal.toLocaleString("el-GR")} + satellite ${allocTotal.toLocaleString("el-GR")}</span>`:""}</td></tr>`;
+      if(allocItems.length){
+        main+=allocItems.map(a=>`<tr style="background:var(--parch)"><td style="padding-left:24px;font-size:12.5px" class="muted">↳ to <b>${esc(a.to)}</b> <span class="tiny">(${(a.pct*100).toFixed(0)}% of lunch)</span></td><td></td><td></td><td></td><td class="tiny muted">${a.n.toLocaleString("el-GR")} <span style="font-size:10px">snack 12–17</span></td><td></td><td class="tiny muted">${a.n.toLocaleString("el-GR")}</td></tr>`).join("");
+      }
+      return main;
+    }).join("")}</tbody></table>
+    <p class="tiny muted" style="padding:10px 14px 0">The cost-center kitchens (Seasons, Ouzo, Oliva, Kos) produce snacks 12:00–17:00 also for satellite points (pool/beach bars) that fall administratively under Deluxe Lobby and do not appear separately in ReviewPro. “Satellite” is a percentage of the kitchen's lunch covers.</p>`;
+
+  // covers↔score correlation insight
+  const corrPts=names.map(n=>{const o=COVERS.byOutlet[n];const s=scoreOf(n);return{n,vol:o.bf+o.lu+o.di,cu:s.cuisine};}).filter(p=>p.cu!=null&&p.vol>0);
+  if(corrPts.length>=3){
+    const mv=avg(corrPts.map(p=>p.vol)), mc=avg(corrPts.map(p=>p.cu));
+    let cov=0,vv=0,cc=0; corrPts.forEach(p=>{cov+=(p.vol-mv)*(p.cu-mc);vv+=(p.vol-mv)**2;cc+=(p.cu-mc)**2;});
+    const r=(vv&&cc)?cov/Math.sqrt(vv*cc):0;
+    const dir = r<-0.3?"negative — busier restaurants tend toward slightly lower scores (volume pressure)":r>0.3?"positive — volume does not seem to hurt the score":"weak — volume alone does not explain the score";
+    const busiest=corrPts.slice().sort((a,b)=>b.vol-a.vol)[0];
+    $("#cov-corr") && ($("#cov-corr").innerHTML=`<b>Volume ↔ score correlation:</b> r = ${r.toFixed(2)} (${dir}). Busiest: <b>${esc(busiest.n)}</b> with ${busiest.vol.toLocaleString("el-GR")} covers with cuisine ${busiest.cu.toFixed(2)}.`);
+  } else { $("#cov-corr") && ($("#cov-corr").innerHTML='<span class="muted tiny">Too few points for correlation.</span>'); }
+}
+
+/* ---------- Cross-hotel Benchmark ---------- */
+const IKOS_RX=/^Ikos /i;
+const EXCLUDE_RX=/Sani Resort.*Ikos Resorts|^Group/i; // aggregate rows
+function benchData(){
+  // build per-hotel metrics from existing DB tables (weighted by responses)
+  const H={};
+  function ensure(h){ return H[h]||(H[h]={hotel:h,cu:[],sv:[],bars:[],rs:[],overall:null,nps:null}); }
+  DB.restRatings.forEach(o=>{ if(!o.hotel||EXCLUDE_RX.test(o.hotel)||/Dine Out/i.test(o.outlet))return;
+    const x=ensure(o.hotel); if(o.question==="Cuisine"&&o.score!=null)x.cu.push({v:o.score,w:o.responses}); if(o.question==="Service"&&o.score!=null)x.sv.push({v:o.score,w:o.responses}); });
+  DB.bars.forEach(o=>{ if(!o.hotel||EXCLUDE_RX.test(o.hotel))return; if(o.score!=null)ensure(o.hotel).bars.push({v:o.score,w:o.responses}); });
+  DB.roomservice.forEach(o=>{ if(!o.hotel||EXCLUDE_RX.test(o.hotel))return; if(o.score!=null)ensure(o.hotel).rs.push({v:o.score,w:o.responses}); });
+  if(DB.overallTable) Object.entries(DB.overallTable).forEach(([h,v])=>{ if(!EXCLUDE_RX.test(h)) ensure(h).overall=v.score; });
+  if(DB.npsTable) Object.entries(DB.npsTable).forEach(([h,v])=>{ if(!EXCLUDE_RX.test(h)) ensure(h).nps=v.score; });
+  return Object.values(H).map(x=>({hotel:x.hotel, cuisine:wavg(x.cu), service:wavg(x.sv), bars:wavg(x.bars), rs:wavg(x.rs), overall:x.overall, nps:x.nps, isIkos:IKOS_RX.test(x.hotel)}))
+    .filter(x=>x.cuisine!=null||x.overall!=null);
+}
+const METRIC_LABEL={cuisine:"Cuisine",service:"Service",overall:"Overall",nps:"NPS",bars:"Bars",rs:"Room Service"};
+function renderBench(){
+  const has = DB && DB.restRatings && DB.restRatings.length;
+  $("#bench-empty").style.display=has?"none":"block";
+  $("#bench-body").style.display=has?"block":"none";
+  if(!has) return;
+  // view-mode panels
+  $("#bench-property").style.display=benchView==="property"?"block":"none";
+  $("#bench-concept").style.display=benchView==="concept"?"block":"none";
+  $("#bench-category").style.display=benchView==="category"?"block":"none";
+  if(benchView==="concept"){ renderBenchConcept(); return; }
+  if(benchView==="category"){ renderBenchCategory(); return; }
+  let data=benchData();
+  if(benchGroup==="ikos") data=data.filter(d=>d.isIkos);
+  $("#bench-tag").textContent=`${data.length} properties · metric: ${METRIC_LABEL[benchMetric]}`;
+
+  // rank KPIs for Aria across all metrics
+  const rankOf=metric=>{ const valid=data.filter(d=>d[metric]!=null).sort((a,b)=>b[metric]-a[metric]);
+    const idx=valid.findIndex(d=>d.hotel===HOTEL); return idx<0?null:{rank:idx+1,total:valid.length,val:valid[idx][metric],top:valid[0]}; };
+  const metrics=["cuisine","service","overall","nps","bars","rs"];
+  $("#bench-rank").innerHTML=metrics.map(m=>{ const r=rankOf(m); if(!r)return "";
+    const cls=r.rank<=2?"k-green":r.rank<=Math.ceil(r.total/2)?"k-navy":"k-rust";
+    return `<div class="kpi ${cls}"><div class="lab">${METRIC_LABEL[m]}</div>
+      <div class="val" style="font-size:30px">#${r.rank}<small>/${r.total}</small></div>
+      <div class="note">${m==="nps"?r.val.toFixed(1):r.val.toFixed(2)} · top ${r.top.hotel.replace(/^Ikos |^Sani /,"")} ${m==="nps"?r.top[m].toFixed(1):r.top[m].toFixed(2)}</div></div>`;
+  }).join("");
+
+  // metric bar chart
+  const sorted=data.filter(d=>d[benchMetric]!=null).sort((a,b)=>benchSort==="asc"?(a[benchMetric]-b[benchMetric]):(b[benchMetric]-a[benchMetric]));
+  const vals=sorted.map(d=>d[benchMetric]); const mn=Math.min(...vals), mx=Math.max(...vals);
+  const scaleLo=benchMetric==="nps"?Math.floor(mn-2):Math.max(8.5,Math.floor(mn*10)/10-0.05);
+  const scaleHi=benchMetric==="nps"?Math.ceil(mx+1):10;
+  $("#bench-chart").innerHTML=sorted.map(d=>{
+    const v=d[benchMetric]; const w=Math.max(2,((v-scaleLo)/(scaleHi-scaleLo))*100);
+    const isAria=d.hotel===HOTEL;
+    const col=isAria?"t-gold":d.isIkos?"t-green":"";
+    return `<div class="bar-row" title="${esc(d.hotel)}: ${benchMetric==="nps"?v.toFixed(1):v.toFixed(2)} (${METRIC_LABEL[benchMetric]})"><span class="bl" style="${isAria?'font-weight:800;color:var(--gold)':''}">${esc(d.hotel)}${isAria?' ◄':''}</span>
+      <div class="bar-track"><div class="bar-fill ${col}" style="width:${w}%;${isAria?'box-shadow:0 0 0 2px var(--gold)':''}" title="${benchMetric==="nps"?v.toFixed(1):v.toFixed(2)}"></div></div>
+      <span class="bv" style="${isAria?'color:var(--gold)':''}">${benchMetric==="nps"?v.toFixed(1):v.toFixed(2)}</span></div>`;
+  }).join("");
+
+  // full table
+  const t=data.slice().sort((a,b)=>(b.overall||0)-(a.overall||0));
+  $("#bench-table").innerHTML=`<table><thead><tr><th>Property</th><th>Overall</th><th>NPS</th><th>Cuisine</th><th>Service</th><th>Bars</th><th>Room Svc</th></tr></thead><tbody>${
+    t.map(d=>{ const a=d.hotel===HOTEL; const f=(v,n=2)=>v==null?'<span class="muted">—</span>':(n===1?v.toFixed(1):v.toFixed(2));
+      return `<tr style="${a?'background:var(--parch2)':''}"><td class="outlet-name" style="${a?'color:var(--gold)':''}">${esc(d.hotel)}${a?' ◄':''}</td>
+      <td>${f(d.overall)}</td><td>${f(d.nps,1)}</td><td>${f(d.cuisine)}</td><td>${f(d.service)}</td><td>${f(d.bars)}</td><td>${f(d.rs)}</td></tr>`;
+    }).join("")}</tbody></table>`;
+
+  // learn from leaders
+  const learn=[];
+  metrics.forEach(m=>{ const r=rankOf(m); if(!r||r.rank<=2)return;
+    if(r.top.hotel===HOTEL) return;
+    const gap=r.top[m]-r.val;
+    if(gap<=0) return;
+    learn.push({metric:m,rank:r.rank,total:r.total,gap,top:r.top.hotel,topVal:r.top[m],ariaVal:r.val});
+  });
+  learn.sort((a,b)=>b.gap-a.gap);
+  $("#bench-learn").innerHTML = learn.length? learn.map(l=>{
+    const fmt=l.metric==="nps"?(x=>x.toFixed(1)):(x=>x.toFixed(2));
+    const advice={
+      cuisine:"Cuisine is the biggest gap — look at consistency/execution like the leaders.",
+      service:"Small gap in service — already a strong point.",
+      overall:"Overall experience — the cumulative result of all touchpoints.",
+      nps:"Loyalty/recommendation — tied to experience consistency & wow moments.",
+      bars:"Bars — speed & drink quality are the usual lever.",
+      rs:"Room service — delivery time & temperature."
+    }[l.metric];
+    return `<div class="rec ${l.gap>0.2?'pri-high':'pri-med'}" style="margin-bottom:12px">
+      <div class="rh"><h4>${METRIC_LABEL[l.metric]} — #${l.rank}/${l.total}</h4><span class="pri ${l.gap>0.2?'pri-high':'pri-med'}">gap ${l.metric==="nps"?'+'+l.gap.toFixed(1):'+'+l.gap.toFixed(2)}</span></div>
+      <div class="why">Aria ${fmt(l.ariaVal)} vs leader <b>${esc(l.top)}</b> ${fmt(l.topVal)}. ${advice}</div></div>`;
+  }).join("") : '<p class="muted tiny">Aria is at the top or very close on all metrics of this group.</p>';
+}
+
+/* per-outlet data across all hotels: restaurants (cuisine/service) + bars (barScore) */
+function outletsAcrossGroup(){
+  const map={};
+  DB.restRatings.forEach(o=>{ if(!o.hotel||EXCLUDE_RX.test(o.hotel)||/Dine Out/i.test(o.outlet))return;
+    const k=o.hotel+"||"+o.outlet; const e=map[k]||(map[k]={hotel:o.hotel,outlet:o.outlet,responses:o.responses,isIkos:IKOS_RX.test(o.hotel),kind:"rest"});
+    if(o.question==="Cuisine"){e.cuisine=o.score;e.responses=o.responses;} if(o.question==="Service")e.service=o.score; });
+  (DB.bars||[]).forEach(b=>{ if(!b.hotel||EXCLUDE_RX.test(b.hotel)||b.score==null)return;
+    const k=b.hotel+"||"+b.outlet; map[k]={hotel:b.hotel,outlet:b.outlet,responses:b.responses,isIkos:IKOS_RX.test(b.hotel),kind:"bar",barScore:b.score}; });
+  return Object.values(map);
+}
+function renderBenchConcept(){
+  const all=outletsAcrossGroup();
+  // concepts = our restaurant + bar outlet names
+  const ourRest=[...new Set(all.filter(o=>o.hotel===HOTEL&&o.kind==="rest").map(o=>o.outlet))].sort();
+  const ourBars=[...new Set(all.filter(o=>o.hotel===HOTEL&&o.kind==="bar").map(o=>o.outlet))].sort();
+  const sel=$("#bc-concept");
+  const wantOpts=ourRest.length+ourBars.length;
+  if(sel.options.length!==wantOpts){
+    let h="";
+    if(ourRest.length) h+=`<optgroup label="Restaurants">${ourRest.map(c=>`<option value="rest::${esc(c)}">${esc(c)}</option>`).join("")}</optgroup>`;
+    if(ourBars.length) h+=`<optgroup label="Bars">${ourBars.map(c=>`<option value="bar::${esc(c)}">${esc(c)}</option>`).join("")}</optgroup>`;
+    sel.innerHTML=h;
+  }
+  const allConceptVals=[...ourRest.map(c=>"rest::"+c),...ourBars.map(c=>"bar::"+c)];
+  if(!bcConcept||!allConceptVals.includes(bcConcept)) bcConcept=allConceptVals[0];
+  sel.value=bcConcept;
+  const [ckind,cname]=bcConcept.split("::");
+  // metric: bars use barScore; restaurants use cuisine/service
+  const metricSel=$("#bc-metric");
+  if(ckind==="bar"){ metricSel.style.display="none"; }
+  else { metricSel.style.display=""; metricSel.value=bcMetric; }
+  const metricKey = ckind==="bar"?"barScore":bcMetric;
+  const metricLbl = ckind==="bar"?"Score":METRIC_LABEL[bcMetric];
+  const rows=all.filter(o=>o.kind===ckind&&o.outlet===cname&&o[metricKey]!=null).sort((a,b)=>b[metricKey]-a[metricKey]);
+  $("#bc-tag").textContent=`${cname} · ${rows.length} properties · ${metricLbl}`;
+  if(!rows.length){ $("#bc-chart").innerHTML='<p class="muted tiny">The concept does not exist in other properties.</p>'; return; }
+  const vals=rows.map(r=>r[metricKey]); const lo=Math.max(8,Math.floor((Math.min(...vals)-0.1)*10)/10), hi=10;
+  $("#bc-chart").innerHTML=rows.map(r=>{
+    const w=Math.max(2,((r[metricKey]-lo)/(hi-lo))*100); const aria=r.hotel===HOTEL;
+    return `<div class="bar-row" title="${esc(r.hotel)}: ${r[metricKey].toFixed(2)}"><span class="bl" style="${aria?'font-weight:800;color:var(--gold)':''}">${esc(r.hotel)}${aria?' ◄':''}</span>
+      <div class="bar-track"><div class="bar-fill ${aria?'t-gold':r.isIkos?'t-green':''}" style="width:${w}%"></div></div>
+      <span class="bv" style="${aria?'color:var(--gold)':''}">${r[metricKey].toFixed(2)}</span></div>`;
+  }).join("")+`<p class="tiny muted" style="margin-top:8px">#1: <b>${esc(rows[0].hotel)}</b> (${rows[0][metricKey].toFixed(2)}). ${rows.find(r=>r.hotel===HOTEL)?`Our ${cname}: rank #${rows.findIndex(r=>r.hotel===HOTEL)+1}/${rows.length}.`:""}</p>`;
+}
+function renderBenchCategory(){
+  const all=outletsAcrossGroup();
+  let metricKey, items;
+  if(bcatCat==="bar"){ items=DB.bars.filter(b=>!EXCLUDE_RX.test(b.hotel)&&b.score!=null).map(b=>({hotel:b.hotel,outlet:b.outlet,val:b.score,isIkos:IKOS_RX.test(b.hotel)})); }
+  else if(bcatCat==="rs"){ items=DB.roomservice.filter(b=>!EXCLUDE_RX.test(b.hotel)&&b.score!=null).map(b=>({hotel:b.hotel,outlet:b.outlet,val:b.score,isIkos:IKOS_RX.test(b.hotel)})); }
+  else { const mk=bcatCat==="rest-service"?"service":"cuisine"; items=all.filter(o=>o[mk]!=null).map(o=>({hotel:o.hotel,outlet:o.outlet,val:o[mk],responses:o.responses,isIkos:IKOS_RX.test(o.hotel)})); }
+  const ours=items.filter(o=>o.hotel===HOTEL), group=items.filter(o=>o.hotel!==HOTEL);
+  const ariaAvg=wavg(ours.map(o=>({v:o.val,w:o.responses}))), groupAvg=wavg(group.map(o=>({v:o.val,w:o.responses})));
+  const ikosAvg=wavg(items.filter(o=>o.isIkos&&o.hotel!==HOTEL).map(o=>({v:o.val,w:o.responses})));
+  $("#bcat-tag").textContent=`${items.length} outlets in the group`;
+  $("#bcat-kpis").innerHTML=[
+    kpiCardRaw("Aria avg",ariaAvg!=null?ariaAvg.toFixed(2):"—","navy",`${ours.length} outlets`),
+    kpiCardRaw("Ikos peers avg",ikosAvg!=null?ikosAvg.toFixed(2):"—","green","other Ikos"),
+    kpiCardRaw("Whole group avg",groupAvg!=null?groupAvg.toFixed(2):"—","","excl. Aria"),
+    kpiCardRaw("Diff vs group",(ariaAvg!=null&&groupAvg!=null)?((ariaAvg-groupAvg>=0?"+":"")+(ariaAvg-groupAvg).toFixed(2)):"—",(ariaAvg>=groupAvg)?"green":"rust","")
+  ].join("");
+  // ranking of all outlets, our outlets highlighted
+  const sorted=items.slice().sort((a,b)=>b.val-a.val);
+  const lo=Math.max(8,Math.floor((Math.min(...items.map(i=>i.val))-0.1)*10)/10), hi=10;
+  $("#bcat-chart").innerHTML=`<div style="max-height:520px;overflow-y:auto">`+sorted.map((o,i)=>{
+    const w=Math.max(2,((o.val-lo)/(hi-lo))*100); const aria=o.hotel===HOTEL;
+    return `<div class="bar-row"><span class="bl" style="width:230px;${aria?'font-weight:800;color:var(--gold)':''}"><span class="tiny muted">#${i+1}</span> ${esc(o.outlet)} <span class="tiny muted">${esc(o.hotel.replace(/^Ikos |^Sani /,""))}</span>${aria?' ◄':''}</span>
+      <div class="bar-track"><div class="bar-fill ${aria?'t-gold':o.isIkos?'t-green':''}" style="width:${w}%"></div></div>
+      <span class="bv" style="${aria?'color:var(--gold)':''}">${o.val.toFixed(2)}</span></div>`;
+  }).join("")+`</div>`;
+}
+
+/* ---------- Recommendations engine ---------- */
+function renderRecs(scope){
+  const recs=[];
+  let list=outletList().filter(o=>o.cuisine!=null);
+  const mains=list.filter(o=>!/Dine Out/i.test(o.outlet));
+  if(scope!=="__ALL__") list=list.filter(o=>o.outlet===scope);
+
+  // group context
+  const cuAvg=wavg(mains.map(o=>({v:o.cuisine,w:o.responses}))), svAvg=wavg(mains.map(o=>({v:o.service,w:o.responses})));
+
+  function themesFor(outlet){
+    const cs=scopeComments(outlet).filter(c=>c.score!=null&&c.score<=7);
+    const cnt={}; cs.forEach(c=>classify(c.comment).forEach(k=>cnt[k]=(cnt[k]||0)+1));
+    return Object.entries(cnt).sort((a,b)=>b[1]-a[1]);
+  }
+  function actionsFromThemes(themes){
+    const a=[]; const has=k=>themes.some(t=>t[0]===k);
+    if(has("Dish temperature")) a.push("Pass &amp; expediting discipline: measure dish→table time, use heat lamps, hold discipline at peak hours.");
+    if(has("Execution / Technique")) a.push("Target kitchen consistency: spec cards per dish, line checks before service, spot checks on doneness/seasoning.");
+    if(has("Quantity / Portion")) a.push("Re-check portioning standards — weighing/photographic plating guide so portions stay consistent.");
+    if(has("Variety / Options")) a.push("Menu engineering: rotation specials or refresh 2-3 dishes per cycle for repeat guests.");
+    if(has("Authenticity")) a.push("Strengthen authenticity in signature/ethnic dishes — recipe review with the chef de cuisine.");
+    if(has("Pace / Waiting")) a.push("Service choreography: kitchen-floor sync, steady pacing between courses, clear section assignments.");
+    if(has("Booking / Availability")) a.push("ΈReview booking flow & availability messaging — manage buffer without looking “fully booked” to guests.");
+    if(has("Staff behavior")) a.push("Targeted coaching on guest interaction & recovery for the specific shift/team.");
+    if(has("Atmosphere / Space")) a.push("Review seating/noise/thermal comfort & soundscape at the outlet.");
+    if(has("Allergies / Dietary")) a.push("Confirm allergy protocol & clearly present dietary options on the menu.");
+    if(has("Drinks / Wine / Bar")) a.push("Beverage pairing & drink serving speed — control bar-to-table time.");
+    if(!a.length) a.push("Maintain current standard — no specific theme to fix.");
+    return a;
+  }
+
+  list.sort((a,b)=>(a.cuisine-b.cuisine));
+  list.forEach(o=>{
+    const gap=(o.service!=null&&o.cuisine!=null)?o.service-o.cuisine:0;
+    const themes=themesFor(o.outlet);
+    let pri="low",why=[];
+    if(o.cuisine<8.8){ pri="high"; why.push(`Cuisine ${o.cuisine.toFixed(2)} — below the benchmark.`); }
+    else if(o.cuisine<9.1){ pri="med"; why.push(`Cuisine ${o.cuisine.toFixed(2)} — room for improvement.`); }
+    if(o.cuisineChg!=null&&o.cuisineChg<0){ if(pri==="low")pri="med"; why.push(`Cuisine declining vs last yr (${o.cuisineChg.toFixed(2)}).`); }
+    if(gap>0.4){ why.push(`Large service−cuisine gap (+${gap.toFixed(2)}) → the weight is on the kitchen.`); if(pri==="low")pri="med"; }
+    if(cuAvg&&o.cuisine<cuAvg&&!/Dine Out/i.test(o.outlet)) why.push(`Below Aria's restaurant average (${cuAvg.toFixed(2)}).`);
+    if(!why.length) why.push("Stable, strong performance.");
+    const topTh=themes.slice(0,3).map(t=>`${t[0]} (${t[1]})`).join(" · ");
+    recs.push({outlet:o.outlet,pri,why:why.join(" "),actions:actionsFromThemes(themes),evidence:topTh?`Dominant ≤7 comment themes: ${topTh}`:"No significant negative comments.",cuisine:o.cuisine,service:o.service,resp:o.responses});
+  });
+
+  // overall systemic rec (only in ALL scope)
+  let html="";
+  if(scope==="__ALL__"){
+    const allLow=scopeComments("__ALL__").filter(c=>c.score!=null&&c.score<=7);
+    const cnt={}; allLow.forEach(c=>classify(c.comment).forEach(k=>cnt[k]=(cnt[k]||0)+1));
+    const top=Object.entries(cnt).sort((a,b)=>b[1]-a[1]).slice(0,4);
+    const worst=mains.slice().sort((a,b)=>a.cuisine-b.cuisine).slice(0,3).map(o=>`${o.outlet} (${o.cuisine.toFixed(2)})`).join(", ");
+    html+=`<div class="rec pri-high"><div class="rh"><h4>Overall F&amp;B direction</h4><span class="pri pri-high">Strategic</span></div>
+      <div class="why">Cuisine average ${cuAvg?cuAvg.toFixed(2):"—"} vs service ${svAvg?svAvg.toFixed(2):"—"}. The systemic gap is in <b>kitchen execution</b>, while service consistently performs high.</div>
+      <ul>
+        <li>Priority on the restaurants with the lowest cuisine: <b>${esc(worst)}</b>.</li>
+        <li>Shared kitchen consistency program across all outlets: line checks, spec cards, serving temperatures.</li>
+        <li>Maintain & leverage strong service as a differentiator in guest interactions.</li>
+        ${top.length?`<li>Cross-cutting themes to watch: ${top.map(t=>esc(t[0])+" ("+t[1]+")").join(" · ")}.</li>`:""}
+      </ul>
+      ${DB.semantic&&DB.semantic.neg&&DB.semantic.neg.length?`<div class="ev">Semantic (GRI impact): ${DB.semantic.neg.slice(0,3).map(s=>esc(s.cat)+" ["+esc(s.concept)+"] "+(s.griImpact!=null?s.griImpact.toFixed(1):"")).join(" · ")}</div>`:""}
+    </div>`;
+
+    // Bars rec
+    const barLow=domainComments("bar").filter(c=>c.score!=null&&c.score<=7);
+    if(barLow.length){
+      const bc={}; barLow.forEach(c=>classify(c.comment,"bar").forEach(k=>bc[k]=(bc[k]||0)+1));
+      const bt=Object.entries(bc).sort((a,b)=>b[1]-a[1]);
+      const barScores=DB.bars.filter(b=>b.hotel===HOTEL&&b.score!=null).sort((a,b)=>a.score-b.score);
+      const worstBars=barScores.slice(0,3).map(b=>`${b.outlet} (${b.score.toFixed(2)})`).join(", ");
+      const ba=[]; const has=k=>bt.some(t=>t[0]===k);
+      if(has("Serving speed")) ba.push("Bar-to-guest speed: adequate staffing at peak hours, runner system at pool/beach bars, monitoring order→serve time.");
+      if(has("Drinks variety")) ba.push("Expand/communicate the beverage list — premium brands & signature cocktails more visible to guests.");
+      if(has("Cocktail quality")) ba.push("Standardize cocktail recipes (spec/jigger discipline) for consistency across bartenders & shifts.");
+      if(has("Atmosphere / Music")) ba.push("Control music volume/type & seating flow at the bars with the most comments.");
+      if(has("Coffee")) ba.push("Coffee quality/consistency — machine checks & barista training.");
+      if(!ba.length) ba.push("Maintain current standard at the bars.");
+      html+=`<div class="rec pri-med"><div class="rh"><h4>Bars</h4><span class="pri pri-med">Area</span></div>
+        <div class="why">${barLow.length} comments ≤7. Dominant theme: <b>${bt.length?esc(bt[0][0])+" ("+bt[0][1]+")":"—"}</b>. Lowest bars: ${esc(worstBars)}.</div>
+        <ul>${ba.map(a=>`<li>${a}</li>`).join("")}</ul>
+        <div class="ev">Top themes: ${bt.slice(0,4).map(t=>esc(t[0])+" ("+t[1]+")").join(" · ")}</div></div>`;
+    }
+    // Room Service rec
+    const rsLow=domainComments("rs").filter(c=>c.score!=null&&c.score<=7);
+    if(rsLow.length){
+      const rc={}; rsLow.forEach(c=>classify(c.comment,"rs").forEach(k=>rc[k]=(rc[k]||0)+1));
+      const rt=Object.entries(rc).sort((a,b)=>b[1]-a[1]);
+      const rsScore=DB.roomservice.filter(b=>b.hotel===HOTEL&&b.score!=null)[0];
+      const ra=[]; const has=k=>rt.some(t=>t[0]===k);
+      if(has("Delivery time")) ra.push("Delivery time commitment (SLA) & monitoring — prioritize room service at peak hours.");
+      if(has("Food temperature")) ra.push("Thermal covers/insulated boxes & delivery route optimization for hot food.");
+      if(has("Order accuracy")) ra.push("Order checklist before dispatch (completeness, cutlery, condiments).");
+      if(has("Menu variety")) ra.push("Review room service menu — range of options & 24h availability of basics.");
+      if(has("Food quality")) ra.push("Quality control of travelling dishes — choose dishes that hold up in transit.");
+      if(!ra.length) ra.push("Maintain current standard at room service.");
+      html+=`<div class="rec pri-med"><div class="rh"><h4>Room Service</h4><span class="pri pri-med">Area</span></div>
+        <div class="why">${rsLow.length} comments ≤7${rsScore?` · score ${rsScore.score.toFixed(2)}`:""}. Dominant: <b>${rt.length?esc(rt[0][0])+" ("+rt[0][1]+")":"—"}</b>.</div>
+        <ul>${ra.map(a=>`<li>${a}</li>`).join("")}</ul>
+        <div class="ev">Top themes: ${rt.slice(0,4).map(t=>esc(t[0])+" ("+t[1]+")").join(" · ")}</div></div>`;
+    }
+    // Pool & Beach Experience rec
+    const pbItems=[];
+    if(DB.poolTable&&DB.poolTable[HOTEL]) pbItems.push({name:"Pool Experience",...DB.poolTable[HOTEL]});
+    if(DB.beachTable&&DB.beachTable[HOTEL]) pbItems.push({name:"Beach Experience",...DB.beachTable[HOTEL]});
+    if(pbItems.length){
+      const weakest=pbItems.slice().sort((a,b)=>(a.score||0)-(b.score||0))[0];
+      const pa=[];
+      pbItems.forEach(p=>{ if(p.score!=null&&p.score<9.3) pa.push(`${p.name}: target the points dragging the score down (sunbed availability, drink/food service speed at pool/beach, cleanliness).`); });
+      if(!pa.length) pa.push("Maintain current standard at Pool & Beach — strong picture.");
+      html+=`<div class="rec ${weakest&&weakest.score<9.3?'pri-med':'pri-low'}"><div class="rh"><h4>Pool &amp; Beach Experience</h4><span class="pri ${weakest&&weakest.score<9.3?'pri-med':'pri-low'}">Area</span></div>
+        <div class="why">${pbItems.map(p=>`${p.name}: <b>${p.score!=null?p.score.toFixed(2):"—"}</b>${p.change!=null?` (${p.change>0?'+':''}${p.change.toFixed(2)})`:""}`).join(" · ")}. Part of the F&amp;B department.</div>
+        <ul>${pa.map(a=>`<li>${a}</li>`).join("")}</ul></div>`;
+    }
+  } // end scope==ALL systemic block
+  html+=recs.map(r=>`<div class="rec pri-${r.pri}">
+    <div class="rh"><h4>${esc(r.outlet)}</h4><span class="pri pri-${r.pri}">${r.pri==="high"?"High":r.pri==="med"?"Medium":"Low"} priority</span></div>
+    <div class="why"><b>Cuisine ${r.cuisine!=null?r.cuisine.toFixed(2):"—"} · Service ${r.service!=null?r.service.toFixed(2):"—"} · ${r.resp||0} resp.</b> — ${esc(r.why)}</div>
+    <ul>${r.actions.map(a=>`<li>${a}</li>`).join("")}</ul>
+    <div class="ev">${esc(r.evidence)}</div></div>`).join("");
+  $("#rec-list").innerHTML=html||'<p class="muted">—</p>';
+}
+
+/* ---------- Scope select population ---------- */
+function populateScope(){
+  const sel=$("#scopeSel");
+  let html='<option value="__ALL__">All F&B</option>';
+  const rests=outletList().filter(o=>!/Dine Out/i.test(o.outlet));
+  const dineouts=outletList().filter(o=>/Dine Out/i.test(o.outlet));
+  if(rests.length) html+=`<optgroup label="Restaurants">${rests.map(o=>`<option value="${esc(o.outlet)}">${esc(o.outlet)}</option>`).join("")}</optgroup>`;
+  if(dineouts.length) html+=`<optgroup label="Dine Out">${dineouts.map(o=>`<option value="${esc(o.outlet)}">${esc(o.outlet)}</option>`).join("")}</optgroup>`;
+  const bars=DB.bars?DB.bars.filter(b=>b.hotel===HOTEL):[];
+  if(bars.length) html+=`<optgroup label="Bars">${bars.map(b=>`<option value="bar::${esc(b.outlet)}">${esc(b.outlet)}</option>`).join("")}</optgroup>`;
+  const rs=DB.roomservice?DB.roomservice.filter(b=>b.hotel===HOTEL):[];
+  if(rs.length) html+=`<optgroup label="Room Service">${rs.map(b=>`<option value="rs::${esc(b.outlet)}">${esc(b.outlet)}</option>`).join("")}</optgroup>`;
+  const pb=[];
+  if(DB.poolTable&&DB.poolTable[HOTEL]) pb.push("Pool Experience");
+  if(DB.beachTable&&DB.beachTable[HOTEL]) pb.push("Beach Experience");
+  if(pb.length) html+=`<optgroup label="Pool & Beach">${pb.map(p=>`<option value="pb::${esc(p)}">${esc(p)}</option>`).join("")}</optgroup>`;
+  sel.innerHTML=html;
+}
+
+/* ---------- View switching ---------- */
+function setView(v){ $$(".tab").forEach(t=>t.classList.toggle("on",t.dataset.v===v)); $$(".view").forEach(s=>s.classList.toggle("on",s.id==="v-"+v)); }
+$("#tabs").addEventListener("click",e=>{ const b=e.target.closest(".tab"); if(b){ setView(b.dataset.v); window.scrollTo({top:0,behavior:"smooth"}); } });
+$("#cmt-domain").addEventListener("click",e=>{ const b=e.target.closest(".tab"); if(b){ cmtDomain=b.dataset.d; cmtOutlet="__ALL__"; $$("#cmt-domain .tab").forEach(t=>t.classList.toggle("on",t===b)); renderComments($("#scopeSel").value); } });
+$("#bench-grp").addEventListener("click",e=>{ const b=e.target.closest(".tab"); if(b){ benchGroup=b.dataset.g; $$("#bench-grp .tab").forEach(t=>t.classList.toggle("on",t===b)); renderBench(); } });
+$("#bench-metric-tabs").addEventListener("click",e=>{ const b=e.target.closest(".tab"); if(b){ benchMetric=b.dataset.m; $$("#bench-metric-tabs .tab").forEach(t=>t.classList.toggle("on",t===b)); renderBench(); } });
+$("#bench-view").addEventListener("click",e=>{ const b=e.target.closest(".tab"); if(b){ benchView=b.dataset.bv; $$("#bench-view .tab").forEach(t=>t.classList.toggle("on",t===b)); renderBench(); } });
+$("#bc-concept").addEventListener("change",e=>{ bcConcept=e.target.value; renderBenchConcept(); });
+$("#bc-metric").addEventListener("change",e=>{ bcMetric=e.target.value; renderBenchConcept(); });
+$("#bcat-cat").addEventListener("change",e=>{ bcatCat=e.target.value; renderBenchCategory(); });
+$("#bench-sort").addEventListener("change",e=>{ benchSort=e.target.value; renderBench(); });
+$("#dept-cat").addEventListener("click",e=>{ const b=e.target.closest(".tab"); if(b){ deptCat=b.dataset.cat; render(); } });
+$("#hist-mode").addEventListener("click",e=>{ const b=e.target.closest(".tab"); if(b){ histMode=b.dataset.hm; $$("#hist-mode .tab").forEach(t=>t.classList.toggle("on",t===b)); renderHistory(); } });
+$("#scopeSel").addEventListener("change",()=>{ const v=$("#scopeSel").value; const sp=parseScope(v); if(cmtDomain==="rest"&&!sp){ cmtOutlet=v; } render(); });
+$("#printBtn").addEventListener("click",()=>window.print());
+$("#reloadBtn").addEventListener("click",()=>{ $("#controls").style.display="none"; $("#main").style.display="none"; $("#intake").style.display="block"; });
+/* ---------- File handling ---------- */
+const drop=$("#drop"),fileInput=$("#fileInput");
+$("#pickBtn").addEventListener("click",e=>{e.stopPropagation();fileInput.click();});
+drop.addEventListener("click",()=>fileInput.click());
+["dragenter","dragover"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add("hot");}));
+["dragleave","drop"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove("hot");}));
+drop.addEventListener("drop",e=>handleFiles(e.dataTransfer.files));
+fileInput.addEventListener("change",e=>handleFiles(e.target.files));
+
+function handleFiles(fl){
+  [...fl].forEach(file=>{
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      try{
+        const wb=XLSX.read(ev.target.result,{type:"array"});
+        const type=identify(wb);
+        pending[file.name]={type,wb,name:file.name};
+      }catch(err){ pending[file.name]={type:"unknown",error:true,name:file.name}; }
+      renderChips();
+    };
+    reader.readAsArrayBuffer(file);
+  });
+}
+function renderChips(){
+  const c=$("#chips"); const items=Object.values(pending);
+  c.innerHTML=items.map(f=>`<span class="chip ${f.type!=='unknown'?'ok':''}"><span class="dot"></span>${esc(f.name.replace(/^[0-9]+_/,''))} <span class="muted tiny">· ${TYPE_LABEL[f.type]}</span> <span class="x" onclick="rmFile('${esc(f.name)}')">✕</span></span>`).join("");
+  const hasResults=items.some(f=>f.type==="results");
+  $("#goBtn").disabled=!hasResults;
+  $("#hint").textContent=hasResults?`ΈReady. ${items.length} file(s) — the core (Results by Question) was detected.`:(items.length?`Missing the core “Results by Question – All Responses”.`:"");
+}
+window.rmFile=n=>{ delete pending[n]; renderChips(); };
+
+function ingestPending(landOn){
+  DB=buildDB(pending);
+  const coverFiles=Object.values(pending).filter(f=>f.type==="covers"&&f.wb);
+  if(coverFiles.length){
+    COVER_WBS.push(...coverFiles);
+    COVERS = parseCovers(COVER_WBS);
+  }
+  populateScope();
+  const resultsFiles=Object.values(pending).filter(f=>f.type==="results"&&f.wb);
+  if(resultsFiles.length){ resultsFiles.forEach(f=>snapshotFromResults(f.wb)); }
+  else saveSnapshot();
+  pending={};
+  $("#intake").style.display="none"; $("#controls").style.display="block"; $("#main").style.display="block";
+  setView(landOn||(DB&&DB.restRatings&&DB.restRatings.length?"over":"history"));
+  render();
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+
+$("#goBtn").addEventListener("click",()=>ingestPending("over"));
+
+/* ---------- Firebase shared sync ---------- */
+const FB_PATH="reputation/state";
+function setSync(msg,color){ const el=$("#syncStatus"); if(el){ el.textContent=msg||""; el.style.color=color||"var(--muted)"; } }
+function fbState(){
+  // serialize the full shareable state
+  return { DB:DB, COVERS:COVERS, snaps:loadSnaps(), range:(DB&&DB.range)||null, generated:(DB&&DB.generated)||null, publishedAt:new Date().toISOString() };
+}
+function publishToAll(){
+  if(!window.FB_OK){ setSync("⚠ Firebase not available",""); return; }
+  if(!DB){ setSync("Import data first, then Publish",""); return; }
+  setSync("Publishing…","var(--gold)");
+  try{
+    window.FB_DB.ref(FB_PATH).set(fbState())
+      .then(()=>{ setSync("✓ Published "+new Date().toLocaleTimeString("el-GR"),"var(--green-d,#2E6B5E)"); })
+      .catch(e=>{ setSync("⚠ Publish failed: "+e.message,"var(--rust)"); });
+  }catch(e){ setSync("⚠ Publish error","var(--rust)"); }
+}
+$("#publishBtn") && $("#publishBtn").addEventListener("click",publishToAll);
+
+function loadFromFirebase(cb){
+  if(!window.FB_OK){ cb(false); return; }
+  setSync("Loading shared data…","var(--gold)");
+  window.FB_DB.ref(FB_PATH).once("value")
+    .then(snap=>{
+      const st=snap.val();
+      if(st && st.DB){
+        DB=st.DB; COVERS=st.COVERS||null;
+        if(st.snaps && Array.isArray(st.snaps)) storeSnaps(st.snaps);
+        try{ populateScope(); }catch(e){}
+        setSync("✓ Synced"+(st.publishedAt?(" · "+new Date(st.publishedAt).toLocaleDateString("el-GR")):""),"var(--green-d,#2E6B5E)");
+        cb(true);
+      } else { setSync("No shared data yet — Import & Publish",""); cb(false); }
+    })
+    .catch(e=>{ setSync("⚠ Load failed: "+e.message,"var(--rust)"); cb(false); });
+}
+
+/* Top import button (from within dashboard) */
+function openImport(){ $("#topImport").value=""; $("#topImport").click(); }
+$("#importBtn").addEventListener("click",openImport);
+$("#topImport").addEventListener("change",e=>{
+  const files=[...e.target.files]; if(!files.length) return;
+  let remaining=files.length;
+  files.forEach(file=>{
+    const r=new FileReader();
+    r.onload=ev=>{ try{ const wb=XLSX.read(ev.target.result,{type:"array"}); pending[file.name]={type:identify(wb),wb,name:file.name}; }catch(err){} 
+      if(--remaining===0) ingestPending(); };
+    r.readAsArrayBuffer(file);
+  });
+});
+
+/* ---------- Init: open straight on dashboard, auto-load shared data ---------- */
+function boot(){
+  $("#intake").style.display="none";
+  $("#controls").style.display="block";
+  $("#main").style.display="block";
+  setView("history");
+  render(); // show history immediately from seed/local
+  // then try to pull the latest shared state from Firebase
+  loadFromFirebase(ok=>{
+    if(ok){ setView(DB&&DB.restRatings&&DB.restRatings.length?"over":"history"); render(); }
+  });
+}
+// also let intake's "import instead" work; bind prompt buttons
+document.addEventListener("DOMContentLoaded",()=>{
+  const p=$("#promptImport"); if(p) p.addEventListener("click",openImport);
+});
+$("#promptImport") && $("#promptImport").addEventListener("click",openImport);
+
+/* ---------- Snapshots (historicity) ---------- */
+const SNAP_KEY="aria_rep_snaps_v2";
+const SEED_SNAPS=[
+ {range:"31/12/2022 - 31/12/2023",overall:9.28,nps:83.85,cuisine:9.19,service:9.37,derived:true,seed:true},
+ {range:"01/01/2024 - 31/12/2024",overall:9.53,nps:93.85,cuisine:9.24,service:9.53,derived:false,seed:true},
+ {range:"01/01/2025 - 30/05/2025",overall:9.26,cuisine:9.11,derived:true,seed:true},
+ {range:"01/01/2025 - 31/12/2025",overall:9.42,nps:91.65,cuisine:9.24,service:9.50,derived:false,seed:true},
+ {range:"01/01/2026 - 30/05/2026",overall:9.31,nps:88.03,cuisine:9.19,service:9.54,derived:false,seed:true}
+];
+function loadSnaps(){
+  let stored; try{ stored=JSON.parse(localStorage.getItem(SNAP_KEY)||"null"); }catch(e){ stored=null; }
+  if(!stored||!Array.isArray(stored)||!stored.length){
+    // first run: bake seed in
+    const seeded=SEED_SNAPS.map(s=>({...s,ts:rangeStart(s.range)}));
+    storeSnaps(seeded); return seeded;
+  }
+  // ensure seed ranges always present (merge, prefer stored real data)
+  const map={}; [...SEED_SNAPS.map(s=>({...s,ts:rangeStart(s.range)})),...stored].forEach(s=>{
+    const k=s.range; if(!map[k]) map[k]={...s};
+    else { for(const f of ["overall","nps","cuisine","service","gri"]) if(map[k][f]==null&&s[f]!=null) map[k][f]=s[f];
+           if(s.derived===false) map[k].derived=false; }
+  });
+  return Object.values(map).sort((a,b)=>rangeStart(a.range)-rangeStart(b.range));
+}
+function storeSnaps(arr){ try{ localStorage.setItem(SNAP_KEY,JSON.stringify(arr.slice(-120))); }catch(e){} }
+
+function ariaFB(){ // weighted avg cuisine/service over main restaurants from current DB
+  const cu=DB.restRatings.filter(o=>o.hotel===HOTEL&&o.question==="Cuisine"&&!/Dine Out/i.test(o.outlet));
+  const sv=DB.restRatings.filter(o=>o.hotel===HOTEL&&o.question==="Service"&&!/Dine Out/i.test(o.outlet));
+  return {cuisine:wavg(cu.map(o=>({v:o.score,w:o.responses}))), service:wavg(sv.map(o=>({v:o.score,w:o.responses}))),
+          cuisineChg:wavg(cu.map(o=>({v:o.change,w:o.responses}))), serviceChg:wavg(sv.map(o=>({v:o.change,w:o.responses})))};
+}
+function saveSnapshot(){ if(DB) snapshotFromDB(DB); }
+function snapshotFromResults(wb){
+  // build a lightweight DB-like object from a single results workbook
+  const tmp={range:"",prevRange:"",restRatings:[],overallTable:{},npsTable:{},reviews:null};
+  const sumName=findSheet(wb,"Summary");
+  if(sumName){ aoa(wb,sumName).forEach(r=>{ const a=r&&r[0]?String(r[0]):"";
+    if(a.startsWith("Date Range:"))tmp.range=a.replace("Date Range:","").trim();
+    if(a.startsWith("Previous Date Range:"))tmp.prevRange=a.replace("Previous Date Range:","").trim(); }); }
+  let sn=findSheet(wb,"Restaurants - Ratings"); if(sn) tmp.restRatings=parseRatings(aoa(wb,sn));
+  sn=findSheet(wb,"Recommendation (NPS)"); if(sn) tmp.npsTable=parseSingleChoice(aoa(wb,sn));
+  sn=findSheet(wb,"Overall Experience"); if(sn) tmp.overallTable=parseSingleChoice(aoa(wb,sn));
+  snapshotFromDB(tmp);
+}
+function snapshotFromDB(src){
+  if(!src||!src.range) return;
+  const snaps=loadSnaps();
+  const cu=src.restRatings.filter(o=>o.hotel===HOTEL&&o.question==="Cuisine"&&!/Dine Out/i.test(o.outlet));
+  const sv=src.restRatings.filter(o=>o.hotel===HOTEL&&o.question==="Service"&&!/Dine Out/i.test(o.outlet));
+  const fb={cuisine:wavg(cu.map(o=>({v:o.score,w:o.responses}))),service:wavg(sv.map(o=>({v:o.score,w:o.responses}))),
+            cuisineChg:wavg(cu.map(o=>({v:o.change,w:o.responses}))),serviceChg:wavg(sv.map(o=>({v:o.change,w:o.responses})))};
+  const ov=src.overallTable&&src.overallTable[HOTEL]?src.overallTable[HOTEL]:{};
+  const np=src.npsTable&&src.npsTable[HOTEL]?src.npsTable[HOTEL]:{};
+  const gri=src.reviews&&src.reviews.aria?src.reviews.aria.gri:null;
+  const cur={range:src.range, ts:Date.now(), derived:false,
+    cuisine:fb.cuisine, service:fb.service,
+    overall:ov.score!=null?ov.score:null, nps:np.score!=null?np.score:null, gri:gri};
+  let prev=null;
+  if(src.prevRange && (ov.change!=null||fb.cuisineChg!=null)){
+    prev={range:src.prevRange, ts:Date.now()-1, derived:true,
+      cuisine:fb.cuisine!=null&&fb.cuisineChg!=null?+(fb.cuisine-fb.cuisineChg).toFixed(2):null,
+      service:fb.service!=null&&fb.serviceChg!=null?+(fb.service-fb.serviceChg).toFixed(2):null,
+      overall:ov.score!=null&&ov.change!=null?+(ov.score-ov.change).toFixed(2):null,
+      nps:np.score!=null&&np.change!=null?+(np.score-np.change).toFixed(2):null, gri:null};
+  }
+  const merge=s=>{ const i=snaps.findIndex(x=>x.range===s.range);
+    if(i>=0){ const ex=snaps[i]; const upd={...ex};
+      // prefer non-derived data; fill nulls
+      for(const [k,v] of Object.entries(s)){ if(v==null) continue;
+        if(k==="derived"){ if(!s.derived) upd.derived=false; continue; }
+        if(ex[k]==null || (ex.derived&&!s.derived)) upd[k]=v;
+      }
+      snaps[i]=upd;
+    } else snaps.push(s);
+  };
+  merge(cur); if(prev) merge(prev);
+  snaps.sort((a,b)=>rangeStart(a.range)-rangeStart(b.range));
+  storeSnaps(snaps);
+}
+function rangeStart(range){ const m=String(range).match(/(\d{2})\/(\d{2})\/(\d{4})/); return m?new Date(+m[3],+m[2]-1,+m[1]).getTime():0; }
+function rangeLabel(range){ const m=String(range).match(/(\d{2})\/(\d{2})\/(\d{4}).*?(\d{2})\/(\d{2})\/(\d{4})/);
+  if(!m) return range; const y1=m[3],y2=m[6];
+  if(y1===y2) return `${y1}`; return `${y1}→${y2}`; }
+
+function renderHistory(){
+  const snaps=loadSnaps();
+  $("#hist-n").textContent=snaps.length+" time points";
+  const sb=$("#snapbar"); if(sb){ sb.innerHTML=snaps.length?('<span>History:</span>'+snaps.map(s=>`<span class="snap-pill">${esc(rangeLabel(s.range))}</span>`).join("")):""; }
+
+  if(histMode==="fb"){
+    $("#hist-chart-title").innerHTML="F&amp;B Score Evolution";
+    if(snaps.length<1){ $("#hist-chart").innerHTML='<p class="muted tiny">No snapshots yet.</p>'; }
+    else { $("#hist-chart").innerHTML=interactiveLineChart(snaps); }
+  } else {
+    $("#hist-chart-title").innerHTML="Evolution by F&amp;B department (current vs last yr)";
+    $("#hist-chart").innerHTML=deptHistoryChart();
+  }
+  // comparison table
+  $("#hist-table").innerHTML=histTable(snaps);
+  // F&B evolution from dashboard
+  const ev=DB&&DB.dashboard&&DB.dashboard.evolution&&DB.dashboard.evolution.length?DB.dashboard.evolution:null;
+  $("#hist-evo-panel").style.display=ev?"block":"none";
+  if(ev) $("#hist-evo").innerHTML=evoChart(ev);
+  // covers date comparison
+  setupCoverCompare();
+}
+
+/* Per-department F&B history from Internal Ranking (current + derived prior year) */
+function deptHistoryChart(){
+  if(!DB||!DB.ranking||!DB.ranking.length) return '<p class="muted tiny">Load the Internal Ranking for per-department history.</p>';
+  const fb=DB.ranking.filter(d=>deptCategory(d.name)==="F&B"&&d.score!=null);
+  if(!fb.length) return '<p class="muted tiny">No F&B departments in the ranking.</p>';
+  // each dept: prior = score - scoreChange, current = score
+  const rows=fb.map(d=>({name:d.name, prev:d.scoreChange!=null?+(d.score-d.scoreChange).toFixed(2):null, cur:d.score, chg:d.scoreChange}));
+  const W=760,H=Math.max(220,rows.length*34+60),padL=200,padR=60;
+  const allv=rows.flatMap(r=>[r.prev,r.cur]).filter(v=>v!=null);
+  const lo=Math.floor((Math.min(...allv)-0.1)*10)/10, hi=Math.ceil((Math.max(...allv)+0.1)*10)/10;
+  const x=v=>padL+((v-lo)/(hi-lo))*(W-padL-padR);
+  let svg=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto">`;
+  // x gridlines
+  const steps=4;
+  for(let s=0;s<=steps;s++){const val=lo+(hi-lo)*s/steps;const xx=x(val);svg+=`<line x1="${xx}" y1="30" x2="${xx}" y2="${H-20}" stroke="var(--line)"/><text x="${xx}" y="20" text-anchor="middle" font-size="9" fill="var(--muted)">${val.toFixed(1)}</text>`;}
+  rows.forEach((r,i)=>{
+    const yy=44+i*34;
+    svg+=`<text x="${padL-10}" y="${yy+4}" text-anchor="end" font-size="11" fill="var(--ink)" font-weight="600">${esc(r.name)}</text>`;
+    if(r.prev!=null&&r.cur!=null){
+      const x1=x(r.prev),x2=x(r.cur);
+      const up=r.cur>=r.prev;
+      svg+=`<line x1="${x1}" y1="${yy}" x2="${x2}" y2="${yy}" stroke="${up?'#2E6B5E':'#9B3B2E'}" stroke-width="2.5"/>`;
+      svg+=`<circle cx="${x1}" cy="${yy}" r="4" fill="#C7A14E"><title>Last yr: ${r.prev.toFixed(2)}</title></circle>`;
+      svg+=`<circle cx="${x2}" cy="${yy}" r="5" fill="${up?'#2E6B5E':'#9B3B2E'}"><title>Now: ${r.cur.toFixed(2)} (${r.chg>0?'+':''}${r.chg.toFixed(2)})</title></circle>`;
+      svg+=`<text x="${x2+(x2>=x1?10:-10)}" y="${yy+4}" text-anchor="${x2>=x1?'start':'end'}" font-size="10" font-weight="700" fill="${up?'#2E6B5E':'#9B3B2E'}">${r.cur.toFixed(2)} (${r.chg>0?'+':''}${r.chg.toFixed(2)})</text>`;
+    } else if(r.cur!=null){
+      svg+=`<circle cx="${x(r.cur)}" cy="${yy}" r="5" fill="#14253B"/><text x="${x(r.cur)+10}" y="${yy+4}" font-size="10" font-weight="700" fill="var(--ink)">${r.cur.toFixed(2)}</text>`;
+    }
+  });
+  svg+=`</svg>`;
+  return svg+`<div style="display:flex;gap:18px;margin-top:8px;font-size:12px" class="muted">
+    <span><span style="display:inline-block;width:10px;height:10px;background:#C7A14E;border-radius:50%"></span> Last yr</span>
+    <span><span style="display:inline-block;width:10px;height:10px;background:#2E6B5E;border-radius:50%"></span> Now (up)</span>
+    <span><span style="display:inline-block;width:10px;height:10px;background:#9B3B2E;border-radius:50%"></span> Now (down)</span>
+    <span style="margin-left:auto">Hover over dots for exact values</span></div>`;
+}
+
+/* Interactive F&B snapshot line chart with hover tooltips */
+function interactiveLineChart(snaps){
+  const series=[
+    {key:"overall",label:"Overall",col:"#14253B"},
+    {key:"cuisine",label:"Cuisine",col:"#9B3B2E"},
+    {key:"service",label:"Service",col:"#B08D57"}
+  ];
+  const W=760,H=320,pad=46;
+  const xs=snaps.map((s,i)=>snaps.length>1?pad+i*(W-pad-30)/(snaps.length-1):W/2);
+  const lo=8, hi=10;
+  const y=v=>H-pad-((Math.max(lo,Math.min(hi,v))-lo)/(hi-lo))*(H-pad-26);
+  let svg=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto" id="histSvg">`;
+  for(let g=lo;g<=hi;g+=0.5){ svg+=`<line x1="${pad}" y1="${y(g)}" x2="${W-30}" y2="${y(g)}" stroke="var(--line)"/><text x="${pad-6}" y="${y(g)+3}" text-anchor="end" font-size="9" fill="var(--muted)">${g.toFixed(1)}</text>`; }
+  snaps.forEach((s,i)=>{ svg+=`<text x="${xs[i]}" y="${H-pad+16}" text-anchor="middle" font-size="9" fill="var(--muted)">${esc(rangeLabel(s.range))}</text>`; });
+  series.forEach(se=>{
+    const pts=snaps.map((s,i)=>s[se.key]!=null?[xs[i],y(s[se.key])]:null).filter(Boolean);
+    if(pts.length>1){ svg+=`<polyline points="${pts.map(p=>p.join(",")).join(" ")}" fill="none" stroke="${se.col}" stroke-width="2.5"/>`; }
+    snaps.forEach((s,i)=>{ if(s[se.key]!=null){
+      svg+=`<circle cx="${xs[i]}" cy="${y(s[se.key])}" r="4.5" fill="${se.col}"><title>${se.label} · ${esc(s.range)}: ${s[se.key].toFixed(2)}${s.derived?' (derived)':''}</title></circle>`;
+      svg+=`<text x="${xs[i]}" y="${y(s[se.key])-8}" text-anchor="middle" font-size="9" font-weight="700" fill="${se.col}">${s[se.key].toFixed(2)}</text>`; } });
+  });
+  svg+=`</svg>`;
+  const legend=`<div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:8px;font-size:12px">`+series.map(se=>`<span><span style="display:inline-block;width:12px;height:3px;background:${se.col};vertical-align:middle"></span> ${se.label}</span>`).join("")+`<span class="muted tiny" style="margin-left:auto">Hover over dots · NPS/GRI in the table below</span></div>`;
+  return svg+legend;
+}
+function histTable(snaps){
+  if(!snaps.length) return '<p class="muted" style="padding:16px">—</p>';
+  const fmt2=v=>v==null?'<span class="muted">—</span>':v.toFixed(2);
+  return `<table><thead><tr><th>Period</th><th>Overall</th><th>Cuisine</th><th>Service</th><th>NPS</th><th>GRI</th><th></th></tr></thead><tbody>${
+    snaps.map(s=>`<tr><td class="outlet-name">${esc(s.range)}${s.derived?' <span class="tiny muted">(derived)</span>':''}</td>
+      <td>${fmt2(s.overall)}</td><td>${fmt2(s.cuisine)}</td><td>${fmt2(s.service)}</td>
+      <td>${s.nps!=null?s.nps.toFixed(1):'<span class="muted">—</span>'}</td>
+      <td>${s.gri!=null?s.gri.toFixed(1)+'%':'<span class="muted">—</span>'}</td>
+      <td><button class="x" style="border:none;background:none;color:var(--muted);cursor:pointer" onclick="rmSnap('${esc(s.range)}')">✕</button></td></tr>`).join("")
+  }</tbody></table>`;
+}
+window.rmSnap=range=>{ const s=loadSnaps().filter(x=>x.range!==range); storeSnaps(s); renderHistory(); };
+
+function evoChart(ev){
+  const W=720,H=260,pad=52;
+  const valid=ev.filter(e=>e.fb!=null);
+  if(valid.length<2) return '<p class="muted tiny">Too few points for a time series.</p>';
+  const xs=valid.map((e,i)=>pad+i*(W-pad-20)/(valid.length-1));
+  const vals=valid.map(e=>e.fb);
+  // round scale to clean 0.1 steps
+  const rawLo=Math.min(...vals), rawHi=Math.max(...vals);
+  const lo=Math.floor((rawLo-0.1)*10)/10, hi=Math.ceil((rawHi+0.1)*10)/10;
+  const y=v=>H-pad-((v-lo)/(hi-lo))*(H-pad-24);
+  let svg=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto">`;
+  // Y gridlines + labels
+  const steps=4;
+  for(let s=0;s<=steps;s++){ const val=lo+(hi-lo)*s/steps; const yy=y(val);
+    svg+=`<line x1="${pad}" y1="${yy}" x2="${W-20}" y2="${yy}" stroke="var(--line)"/><text x="${pad-8}" y="${yy+3}" text-anchor="end" font-size="9" fill="var(--muted)">${val.toFixed(1)}</text>`; }
+  const pts=valid.map((e,i)=>[xs[i],y(e.fb)]);
+  svg+=`<polyline points="${pts.map(p=>p.join(",")).join(" ")}" fill="none" stroke="#146891" stroke-width="2.5"/>`;
+  valid.forEach((e,i)=>{ svg+=`<circle cx="${xs[i]}" cy="${y(e.fb)}" r="3" fill="#146891"/>`;
+    if(i%Math.ceil(valid.length/8)===0||i===valid.length-1){ const lbl=fmtDateShort(e.period); svg+=`<text x="${xs[i]}" y="${H-pad+18}" text-anchor="middle" font-size="8" fill="var(--muted)">${esc(lbl)}</text>`; } });
+  svg+=`<text x="14" y="${H/2}" text-anchor="middle" font-size="10" fill="var(--muted)" transform="rotate(-90 14 ${H/2})">F&B Score (0–10)</text>`;
+  svg+=`</svg>`;
+  const last=valid[valid.length-1].fb, first=valid[0].fb;
+  return svg+`<p class="tiny muted" style="margin-top:6px">Daily F&B score (0–10 scale) per survey day, from the Surveys Dashboard. Period range: ${fmtDate(valid[0].period)} → ${fmtDate(valid[valid.length-1].period)}. Y axis focused on ${lo.toFixed(1)}–${hi.toFixed(1)} to show the variance.</p>`;
+}
+
+/* ---------- Covers free date comparison ---------- */
+// parse DD/MM/YYYY -> ISO yyyy-mm-dd (returns "" if invalid)
+function parseGrDate(s){ const m=String(s||"").trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/); if(!m)return ""; const d=m[1].padStart(2,"0"),mo=m[2].padStart(2,"0"); return `${m[3]}-${mo}-${d}`; }
+function setupCoverCompare(){
+  const has=COVERS&&COVERS.days&&COVERS.days.length;
+  $("#hist-cov-empty").style.display=has?"none":"block";
+  $("#hist-cov-controls").style.display=has?"block":"none";
+  if(!has) return;
+  const lo=COVERS.days[0].date, hi=COVERS.days[COVERS.days.length-1].date;
+  $("#hist-cov-tag").textContent=`${fmtDate(lo)} → ${fmtDate(hi)}`;
+  if(!$("#pA1").value){
+    const all=COVERS.days.map(d=>d.date);
+    const n=all.length;
+    $("#pB1").value=fmtDate(all[Math.max(0,n-15)]); $("#pB2").value=fmtDate(all[n-1]);
+    $("#pA1").value=fmtDate(all[Math.max(0,n-30)]); $("#pA2").value=fmtDate(all[Math.max(0,n-16)]);
+  }
+}
+function sumCovers(from,to){
+  const out={bf:0,lu:0,di:0,days:0,byOutlet:{}};
+  for(const day of COVERS.days){
+    if(day.date<from||day.date>to) continue;
+    out.days++;
+    for(const [o,v] of Object.entries(day.outlets)){
+      out.bf+=v.bf; out.lu+=v.lu; out.di+=v.di;
+      const b=out.byOutlet[o]||(out.byOutlet[o]={bf:0,lu:0,di:0}); b.bf+=v.bf; b.lu+=v.lu; b.di+=v.di;
+    }
+  }
+  return out;
+}
+function runCoverCompare(){
+  const a1=parseGrDate($("#pA1").value),a2=parseGrDate($("#pA2").value),b1=parseGrDate($("#pB1").value),b2=parseGrDate($("#pB2").value);
+  if(!a1||!a2||!b1||!b2){ $("#hist-cov-result").innerHTML='<p class="muted tiny">Fill in both periods in DD/MM/YYYY format (e.g. 15/05/2026).</p>'; return; }
+  const A=sumCovers(a1,a2), B=sumCovers(b1,b2);
+  const tA=A.bf+A.lu+A.di, tB=B.bf+B.lu+B.di;
+  const delta=(x,y)=>{ if(!y) return '<span class="muted">—</span>'; const d=((x-y)/y*100); const c=d>0.5?"up":d<-0.5?"down":"flat"; return `<span class="delta-s ${c}">${d>0?"+":""}${d.toFixed(1)}%</span>`; };
+  const kpi=(lab,x,y)=>`<div class="kpi"><div class="lab">${lab}</div><div class="val" style="font-size:26px">${x.toLocaleString("el-GR")}</div><div class="delta">${delta(x,y)} <span class="note">vs ${y.toLocaleString("el-GR")}</span></div></div>`;
+  const outlets=[...new Set([...Object.keys(A.byOutlet),...Object.keys(B.byOutlet)])].sort((x,y)=>REST_ORDER.indexOf(x)-REST_ORDER.indexOf(y));
+  $("#hist-cov-result").innerHTML=`
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:8px;font-size:12.5px" class="muted">
+      <span class="snap-pill">A: ${fmtDate(a1)} → ${fmtDate(a2)} · ${A.days} d</span>
+      <span class="snap-pill">B: ${fmtDate(b1)} → ${fmtDate(b2)} · ${B.days} d</span>
+      <span class="tiny">(Β = current, A = comparison base)</span>
+    </div>
+    <div class="kpis" style="margin-bottom:18px">
+      ${kpi("Total",tB,tA)}${kpi("Breakfast",B.bf,A.bf)}${kpi("Lunch",B.lu,A.lu)}${kpi("Dinner",B.di,A.di)}
+    </div>
+    <table><thead><tr><th>Restaurant</th><th>B covers</th><th>A covers</th><th>Change</th></tr></thead><tbody>${
+      outlets.map(o=>{const b=B.byOutlet[o]||{bf:0,lu:0,di:0},a=A.byOutlet[o]||{bf:0,lu:0,di:0};const tb=b.bf+b.lu+b.di,ta=a.bf+a.lu+a.di;
+        return `<tr><td class="outlet-name">${esc(o)}</td><td>${tb.toLocaleString("el-GR")}</td><td class="muted">${ta.toLocaleString("el-GR")}</td><td>${delta(tb,ta)}</td></tr>`;}).join("")
+    }</tbody></table>`;
+}
+
+/* history controls */
+$("#histExport").addEventListener("click",()=>{
+  const blob=new Blob([JSON.stringify(loadSnaps(),null,2)],{type:"application/json"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
+  a.download="aria_reputation_history.json"; a.click();
+});
+$("#histImportBtn").addEventListener("click",()=>$("#histImport").click());
+$("#histImport").addEventListener("change",e=>{
+  const f=e.target.files[0]; if(!f) return; const r=new FileReader();
+  r.onload=ev=>{ try{ const imp=JSON.parse(ev.target.result); if(Array.isArray(imp)){
+    const cur=loadSnaps(); const map={}; [...cur,...imp].forEach(s=>{ map[s.range]={...map[s.range],...s}; });
+    const merged=Object.values(map).sort((a,b)=>rangeStart(a.range)-rangeStart(b.range));
+    storeSnaps(merged); renderHistory(); }
+  }catch(err){ alert("Invalid history file."); } };
+  r.readAsText(f);
+});
+$("#histClear").addEventListener("click",()=>{ if(confirm("Delete all snapshots?")){ storeSnaps([]); renderHistory(); } });
+$("#cmpBtn").addEventListener("click",runCoverCompare);
+
+/* All declarations ready — open straight on the dashboard with baked history */
+boot();
+
+</script>
+</body>
+</html>
