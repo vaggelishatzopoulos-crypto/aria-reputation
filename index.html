@@ -10,6 +10,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script>
   /* Firebase — Ikos Aria Reputation (shared sync) */
   window.FIREBASE_CONFIG = {
@@ -25,7 +26,18 @@
     firebase.initializeApp(window.FIREBASE_CONFIG);
     window.FB_DB = firebase.database();
     window.FB_OK = true;
-  } catch(e) { window.FB_OK = false; console.warn("Firebase init failed:", e); }
+    /* Anonymous sign-in: gives every device a token so the database rules
+       can require auth and block anonymous bots. The user sees nothing. */
+    window.FB_READY = new Promise(function(resolve){
+      var done=false, finish=function(){ if(!done){ done=true; resolve(true); } };
+      firebase.auth().onAuthStateChanged(function(user){ if(user) finish(); });
+      firebase.auth().signInAnonymously().catch(function(err){
+        console.warn("Anonymous auth failed — check Firebase Console → Authentication → Sign-in method → Anonymous (Enable):", err);
+        finish(); /* still resolve so the app keeps working while rules are open */
+      });
+      setTimeout(finish, 4000); /* safety net, never hang the app */
+    });
+  } catch(e) { window.FB_OK = false; window.FB_READY = Promise.resolve(false); console.warn("Firebase init failed:", e); }
 </script>
 <style>
 :root{
@@ -1672,11 +1684,13 @@ function publishToAll(){
   if(!window.FB_OK){ setSync("⚠ Firebase not available",""); return; }
   if(!DB){ setSync("Import data first, then Publish",""); return; }
   setSync("Publishing…","var(--gold)");
-  try{
-    window.FB_DB.ref(FB_PATH).set(fbState())
-      .then(()=>{ setSync("✓ Published "+new Date().toLocaleTimeString("el-GR"),"var(--green-d,#2E6B5E)"); })
-      .catch(e=>{ setSync("⚠ Publish failed: "+e.message,"var(--rust)"); });
-  }catch(e){ setSync("⚠ Publish error","var(--rust)"); }
+  (window.FB_READY||Promise.resolve()).then(function(){
+    try{
+      window.FB_DB.ref(FB_PATH).set(fbState())
+        .then(()=>{ setSync("✓ Published "+new Date().toLocaleTimeString("el-GR"),"var(--green-d,#2E6B5E)"); })
+        .catch(e=>{ setSync("⚠ Publish failed: "+e.message,"var(--rust)"); });
+    }catch(e){ setSync("⚠ Publish error","var(--rust)"); }
+  });
 }
 $("#publishBtn") && $("#publishBtn").addEventListener("click",publishToAll);
 
@@ -1718,9 +1732,11 @@ function boot(){
   $("#main").style.display="block";
   setView("history");
   render(); // show history immediately from seed/local
-  // then try to pull the latest shared state from Firebase
-  loadFromFirebase(ok=>{
-    if(ok){ setView(DB&&DB.restRatings&&DB.restRatings.length?"over":"history"); render(); }
+  // then try to pull the latest shared state from Firebase (after anon auth is ready)
+  (window.FB_READY||Promise.resolve()).then(function(){
+    loadFromFirebase(ok=>{
+      if(ok){ setView(DB&&DB.restRatings&&DB.restRatings.length?"over":"history"); render(); }
+    });
   });
 }
 // also let intake's "import instead" work; bind prompt buttons
